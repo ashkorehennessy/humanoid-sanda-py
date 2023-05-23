@@ -4,7 +4,7 @@ import uptech
 import time
 from up_controller import UpController
 
-class SPIDER:
+class Robot:
     def __init__(self):
         self.up=uptech.UpTech()
         self.up_controller=UpController()
@@ -12,7 +12,7 @@ class SPIDER:
         self.up.LCD_Open(2)
         self.up.ADC_Led_SetColor(0,0x07E0)
         self.up.ADC_Led_SetColor(1,0x07E0)
-        self.up.LCD_PutString(10, 0, 'uptech_spider')
+        self.up.LCD_PutString(10, 0, '666')
         self.up.LCD_Refresh()
         self.up.CDS_Open()
         servo_ids = [1,2,3,4,5,6,7,8,9,10]
@@ -30,12 +30,14 @@ class SPIDER:
 
     def start(self):
         while True:
-            time.sleep(3)
-            self.up.CDS_SetAngle(3, 800, 256)
+            time.sleep(1)
+            self.up.CDS_SetAngle(3, 800, 512)
+            time.sleep(1)
+            self.up.CDS_SetAngle(3, 200, 512)
 
 if __name__ == '__main__':
-    spider = SPIDER()
-    spider.start() 
+    robot = Robot()
+    robot.start() 
     
     
     
