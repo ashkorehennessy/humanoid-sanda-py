@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 import uptech
 import time
+from pid import pid
+from atag import Atag
 from up_controller import UpController
+
 
 
 RWHEEL = 1
@@ -21,6 +24,8 @@ class Robot:
     def __init__(self):
         self.up = uptech.UpTech()
         self.up_controller = UpController()
+        self.atag = Atag()
+        self.pid = pid()
         self.up.ADC_IO_Open()
         self.up.LCD_Open(2)
         self.up.ADC_Led_SetColor(0, 0x07E0)
@@ -426,6 +431,9 @@ class Robot:
         else:
             pass
 
+    def push_bar(atag_center):
+        pass
+
     def main(self):
         self.reinit()
 
@@ -535,6 +543,10 @@ class Robot:
                 self.stop()
                 self.autopilot()
                 continue
+
+            atag_id, atag_center = self.atag.detect()
+            if atag_id == 1:
+                self.push_bar(atag_center)
 
             self.autopilot()
 

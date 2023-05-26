@@ -2,7 +2,7 @@ import apriltag
 import cv2
 import numpy as np
 
-class Detector:
+class Atag:
     def __init__(self):
         # Create the AprilTag detector
         self.options = apriltag.DetectorOptions(families="tag36h11")
