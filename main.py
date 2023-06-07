@@ -131,6 +131,7 @@ class Robot:
     def back_3(self):
         self.up.CDS_SetAngle(LHAND, 130, 768)
         self.up.CDS_SetAngle(RHAND, 900, 768)
+        
     
     def front_4(self):
         self.up.CDS_SetAngle(LELBOW, 700, 768)
