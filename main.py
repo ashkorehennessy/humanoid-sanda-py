@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import uptech
 import time
+import signal
 from pid import pid
 from atag import Atag
 from up_controller import UpController
@@ -18,7 +19,8 @@ RFOOT = 7
 RSHOULDER = 8
 RELBOW = 9
 RHAND = 10
-    
+LSHOULDER_X = 11
+RSHOULDER_X = 12
 
 class Robot:
     def __init__(self):
@@ -33,7 +35,7 @@ class Robot:
         self.up.LCD_PutString(10, 0, '混元形意门')
         self.up.LCD_Refresh()
         self.up.CDS_Open()
-        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LWHEEL, RWHEEL]
+        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LSHOULDER_X, RSHOULDER_X]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
@@ -46,6 +48,11 @@ class Robot:
         time.sleep(0.6)
         self.up.CDS_SetAngle(LSHOULDER, 512, 256)
         self.up.CDS_SetAngle(RSHOULDER, 512, 256)
+        signal.signal(signal.SIGINT, self.signal_handler)
+
+    def signal_handler(self, sig, frame):
+        self.stop()
+        exit(0)
 
     def test(self):
         while True:
@@ -365,7 +372,7 @@ class Robot:
         self.up.CDS_SetAngle(RHAND, 780, 256)
 
     def reinit(self):
-        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LWHEEL, RWHEEL]
+        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LSHOULDER_X, RSHOULDER_X]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
@@ -378,8 +385,8 @@ class Robot:
         self.stop()
 
     def autopilot(self):
-        self.up.CDS_SetAngle(LFOOT, 468, 256)
-        self.up.CDS_SetAngle(RFOOT, 468, 256)
+        #self.up.CDS_SetAngle(LFOOT, 468, 256)
+        #self.up.CDS_SetAngle(RFOOT, 468, 256)
 
         auto_pilot_index = 0
         if self.up_controller.io_data[0] == 1:
@@ -396,19 +403,25 @@ class Robot:
         elif auto_pilot_index == 1:
             self.go_back()
             self.turn_right()
-            self.turn_right()
+            #self.turn_right()
             self.forward()
+            self.forward()
+            #self.forward()
         elif auto_pilot_index == 2:
             self.turn_right()
+            self.forward()
             self.forward()
         elif auto_pilot_index == 3:
             self.turn_right()
             self.turn_right()
             self.forward()
+            self.forward()
+            self.forward()
         elif auto_pilot_index == 4:
             self.go_back()
+            #self.turn_left()
             self.turn_left()
-            self.turn_left()
+            self.forward()
             self.forward()
         elif auto_pilot_index == 5:
             self.go_back()
@@ -419,6 +432,7 @@ class Robot:
         elif auto_pilot_index == 8:
             self.turn_left()
             self.forward()
+            self.forward()
         elif auto_pilot_index == 10:
             self.boost()
             self.boost()
@@ -426,6 +440,7 @@ class Robot:
         elif auto_pilot_index == 12:
             self.turn_left()
             self.turn_left()
+            self.forward()
             self.forward()
         elif auto_pilot_index == 15:
             self.stop()
@@ -452,104 +467,26 @@ class Robot:
         attack_times = 0  # 记录攻击次数，每一轮攻击超过3次自动后退逃跑
         is_init = 1
 
-        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LWHEEL, RWHEEL]
+        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LSHOULDER_X, RSHOULDER_X]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
         time.sleep(3)
 
-        while self.up_controller.adc_data[1] < 150:
-            pass  # 接近头部时跳出循环
+        #while self.up_controller.adc_data[1] < 150:
+        #    pass  # 接近头部时跳出循环
 
         self.init()
         time.sleep(2)
         self.boost()
-        time.sleep(1.5)
+        time.sleep(0.2)
         self.forward()
 
         while True:
-            if is_init == 1:
-                if 1000 > self.up_controller.adc_data[0] > 400:
-                    self.alert_delay()
-                    is_init = 0
-
-            enemy_L1 = self.up_controller.io_data[4]  # 检测左前敌人
-            enemy_L2 = self.up_controller.io_data[5]  # 检测左侧敌人
-            enemy_R1 = self.up_controller.io_data[6]  # 检测右前敌人
-            enemy_R2 = self.up_controller.io_data[7]  # 检测右侧敌人
-            enemy_FRONT = self.up_controller.io_data[8]  # 检测前方敌人
-            enemy_BACK = self.up_controller.io_data[9]  # 检测后方敌人及倒地预警
-
-            angle = self.up_controller.adc_data[0]  # 获取AD输入
-            distance = self.up_controller.adc_data[1]  # 获取AD输入
-
-            if angle > 1000:  # 前倒站起
-                self.stop()
-                self.front_stand()
-                self.up.CDS_SetAngle(LFOOT, 468, 256)
-                self.up.CDS_SetAngle(RFOOT, 468, 256)
-                time.sleep(0.2)
-                self.alert_delay()
-                self.autopilot()
-                continue
-
-            if angle < 400:  # 后倒站起
-                self.stop()
-                self.back_stand()
-                self.up.CDS_SetAngle(LFOOT, 468, 256)
-                self.up.CDS_SetAngle(RFOOT, 468, 256)
-                time.sleep(0.2)
-                self.alert_delay()
-                self.autopilot()
-                continue
-
-            if distance > 100 or enemy_FRONT == 0:  # 检测到敌人
-                self.hit_2()
-                if attack_times % 3 == 0:
-                    self.attack_back()
-                attack_times += 1
-                self.autopilot()
-                continue
-            else:  # 检测不到敌人
-                attacking = 0
-                self.alert()
-
-            if enemy_BACK == 0:  # 后方检测到敌人，向前逃跑防止被偷袭
-                self.turn_right()
-                self.autopilot()
-                continue
-
-            if enemy_L2 == 0:  # 左侧检测到敌人
-                self.hit_left()
-                self.stop()
-                self.autopilot()
-                continue
-
-            if enemy_R2 == 0:  # 右侧检测到敌人
-                self.hit_right()
-                self.stop()
-                self.autopilot()
-                continue
-
-            if enemy_L1 == 0:  # 左前方检测到敌人
-                self.hit_3_L()
-                attack_times += 1
-                self.stop()
-                self.autopilot()
-                continue
-
-            if enemy_R1 == 0:  # 右前方检测到敌人
-                self.hit_3_R()
-                attack_times += 1
-                self.stop()
-                self.autopilot()
-                continue
-
-            atag_id, atag_center = self.atag.detect()
-            if atag_id == 1:
-                self.push_bar(atag_center)
-
             self.autopilot()
+            
+
+
 
 
 if __name__ == '__main__':
