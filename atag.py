@@ -4,28 +4,22 @@ import numpy as np
 
 class Atag:
     def __init__(self):
-        # Create the AprilTag detector
         self.options = apriltag.DetectorOptions(families="tag36h11")
         self.detector = apriltag.Detector(self.options)
 
-    def detect(self, image_path):
-        # Load the image
-        image = cv2.imread(image_path)
-
-        # Convert the image to grayscale
+    def detect(self, image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        return self.detector.detect(gray)
 
-        # Detect AprilTags in the image
-        results = self.detector.detect(gray)
-
-        # Process the results
-        tag = []
+    def get_id(self, results):
         result = results[0]
+        return result.tag_id
 
-        # Append tag id
-        tag.append(result.tag_id)
+    def get_center(self, results):
+        result = results[0]
+        return np.array(result.center).astype(int)
+    
+    def get_size(self, results):
+        result = results[0]
+        return int(((result.corners[0][1] - result.corners[1][1]) + (result.corners[3][1] - result.corners[2][1])) / 2)
 
-        # Append tag center pos
-        tag.append(np.array(result.center).astype(int))
-
-        return tag

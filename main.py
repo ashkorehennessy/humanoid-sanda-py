@@ -3,6 +3,7 @@
 import uptech
 import time
 import signal
+import cv2
 from pid import pid
 from atag import Atag
 from up_controller import UpController
@@ -49,6 +50,13 @@ class Robot:
         self.up.CDS_SetAngle(LSHOULDER, 512, 256)
         self.up.CDS_SetAngle(RSHOULDER, 512, 256)
         signal.signal(signal.SIGINT, self.signal_handler)
+        self.video_width = 640
+        self.video_height = 480
+
+    def init_video(self):
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_height)
 
     def signal_handler(self, sig, frame):
         self.stop()
@@ -436,7 +444,29 @@ class Robot:
         else:
             pass
 
-    def push_bar(atag_center):
+    def detect_tag(self):
+        _, image = self.cap.read()
+        results = self.atag.detect(image)
+        # 确认是否找到标签
+        if results is None:
+            return 0
+        # 确认标签ID
+        if self.atag.get_id(results) != 0:
+            return 0
+        # 使用标签实际大小判断距离
+        tag_size = self.atag.get_size(results)
+        if tag_size > 600:
+            self.stop()
+            self.push_tag()
+        # 获取标签x坐标，与屏幕中心作差值进行pid运算
+        tag_x = self.atag.get_center(results)[0]
+        input_value = tag_x - self.video_width / 2
+        output = self.pid.update(input_value,0)
+        # 控制轮子差速
+        self.up.CDS_SetSpeed(RWHEEL, -330 + output)
+        self.up.CDS_SetSpeed(LWHEEL, 340 + output)
+
+    def push_tag(self):
         pass
 
     def main(self):
@@ -473,9 +503,6 @@ class Robot:
 
         while True:
             self.autopilot()
-            
-
-
 
 
 if __name__ == '__main__':
