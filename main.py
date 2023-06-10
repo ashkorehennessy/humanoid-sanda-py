@@ -73,10 +73,10 @@ class Robot:
         self.up.CDS_SetAngle(LSHOULDER, 512, 256)
         self.up.CDS_SetAngle(RSHOULDER, 512, 256)
 
-    def forward(self):
+    def forward(self,ms=100):
         self.up.CDS_SetSpeed(RWHEEL, -330)
         self.up.CDS_SetSpeed(LWHEEL, 340)
-        time.sleep(0.3)
+        time.sleep(ms/1000)
 
     def boost(self):
         self.up.CDS_SetSpeed(RWHEEL, -480)
@@ -399,40 +399,30 @@ class Robot:
             auto_pilot_index += 8
 
         if auto_pilot_index == 0:
-            self.forward()
+            self.forward(ms=100)
         elif auto_pilot_index == 1:
             self.go_back()
             self.turn_right()
-            #self.turn_right()
-            self.forward()
-            self.forward()
-            #self.forward()
+            self.forward(ms=500)
         elif auto_pilot_index == 2:
             self.turn_right()
-            self.forward()
-            self.forward()
+            self.forward(500)
         elif auto_pilot_index == 3:
             self.turn_right()
             self.turn_right()
-            self.forward()
-            self.forward()
-            self.forward()
+            self.forward(1000)
         elif auto_pilot_index == 4:
             self.go_back()
-            #self.turn_left()
             self.turn_left()
-            self.forward()
-            self.forward()
+            self.forward(500)
         elif auto_pilot_index == 5:
             self.go_back()
             self.turn_left()
             self.turn_left()
-            self.turn_left()
-            self.forward()
+            self.forward(300)
         elif auto_pilot_index == 8:
             self.turn_left()
-            self.forward()
-            self.forward()
+            self.forward(500)
         elif auto_pilot_index == 10:
             self.boost()
             self.boost()
@@ -440,8 +430,7 @@ class Robot:
         elif auto_pilot_index == 12:
             self.turn_left()
             self.turn_left()
-            self.forward()
-            self.forward()
+            self.forward(500)
         elif auto_pilot_index == 15:
             self.stop()
         else:
