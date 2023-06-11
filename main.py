@@ -38,15 +38,6 @@ class Robot:
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
-        self.up.CDS_SetAngle(LFOOT, 468, 512)
-        self.up.CDS_SetAngle(LELBOW, 550, 512)
-        self.up.CDS_SetAngle(LHAND, 550, 512)
-        self.up.CDS_SetAngle(RFOOT, 468, 512)
-        self.up.CDS_SetAngle(RELBOW, 512, 512)
-        self.up.CDS_SetAngle(RHAND, 512, 512)
-        time.sleep(0.6)
-        self.up.CDS_SetAngle(LSHOULDER, 512, 256)
-        self.up.CDS_SetAngle(RSHOULDER, 512, 256)
         signal.signal(signal.SIGINT, self.signal_handler)
         self.video_width = 640
         self.video_height = 480
@@ -78,16 +69,23 @@ class Robot:
         self.up.CDS_SetAngle(10, 512, 256)
 
     def init(self):
-        self.up.CDS_SetAngle(LFOOT, 468, 512)
-        self.up.CDS_SetAngle(LELBOW, 550, 512)
-        self.up.CDS_SetAngle(LHAND, 550, 512)
-        self.up.CDS_SetAngle(RFOOT, 468, 512)
-        self.up.CDS_SetAngle(RELBOW, 512, 512)
-        self.up.CDS_SetAngle(RHAND, 512, 512)
-
-        time.sleep(0.6)
-        self.up.CDS_SetAngle(LSHOULDER, 512, 256)
-        self.up.CDS_SetAngle(RSHOULDER, 512, 256)
+        self.up.CDS_SetAngle(LFOOT, 512, 384)
+        self.up.CDS_SetAngle(RFOOT, 512, 384)
+        self.up.CDS_SetAngle(LSHOULDER, 512, 384)
+        self.up.CDS_SetAngle(RSHOULDER, 512, 384)
+        time.sleep(0.7)
+        self.up.CDS_SetAngle(LHAND, 512, 384)
+        self.up.CDS_SetAngle(RHAND, 512, 384)
+        time.sleep(0.7)
+        self.up.CDS_SetAngle(LELBOW, 512, 384)
+        self.up.CDS_SetAngle(RELBOW, 512, 384)
+        time.sleep(0.7)
+        self.up.CDS_SetAngle(LSHOULDER, 818, 384)
+        self.up.CDS_SetAngle(RSHOULDER, 206, 384)
+        time.sleep(0.5)
+        self.up.CDS_SetAngle(LELBOW, 206, 384)
+        self.up.CDS_SetAngle(RELBOW, 206, 384)
+        time.sleep(0.5)
 
     def forward(self,ms=100):
         self.up.CDS_SetSpeed(RWHEEL, -330)
@@ -387,7 +385,7 @@ class Robot:
         self.up.CDS_SetAngle(RELBOW, 740, 256)
         self.up.CDS_SetAngle(RHAND, 780, 256)
 
-    def reinit(self):
+    def reconfig(self):
         servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
@@ -502,7 +500,9 @@ class Robot:
         self.forward(600)
 
     def main(self):
-        self.reinit()
+        #self.init_video()
+        self.reconfig()
+        self.init()
 
         enemy_L1 = 0  # 左前方敌人检测
         enemy_L2 = 0  # 左侧敌人检测
