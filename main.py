@@ -20,8 +20,6 @@ RFOOT = 7
 RSHOULDER = 8
 RELBOW = 9
 RHAND = 10
-LSHOULDER_X = 11
-RSHOULDER_X = 12
 
 class Robot:
     def __init__(self):
@@ -31,12 +29,12 @@ class Robot:
         self.pid = pid()
         self.up.ADC_IO_Open()
         self.up.LCD_Open(2)
-        self.up.ADC_Led_SetColor(0, 0x07E0)
-        self.up.ADC_Led_SetColor(1, 0x07E0)
-        self.up.LCD_PutString(10, 0, '混元形意门')
+        #self.up.ADC_Led_SetColor(0, 0x07E0)
+        #self.up.ADC_Led_SetColor(1, 0x07E0)
+        self.up.LCD_PutString(10, 0, '666')
         self.up.LCD_Refresh()
         self.up.CDS_Open()
-        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LSHOULDER_X, RSHOULDER_X]
+        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
@@ -68,6 +66,16 @@ class Robot:
             self.up.CDS_SetAngle(3, 800, 512)
             time.sleep(1)
             self.up.CDS_SetAngle(3, 200, 512)
+
+    def reset_to_512(self):
+        self.up.CDS_SetAngle(3, 512, 256)
+        self.up.CDS_SetAngle(4, 512, 256)
+        self.up.CDS_SetAngle(5, 512, 256)
+        self.up.CDS_SetAngle(6, 512, 256)
+        self.up.CDS_SetAngle(7, 512, 256)
+        self.up.CDS_SetAngle(8, 512, 256)
+        self.up.CDS_SetAngle(9, 512, 256)
+        self.up.CDS_SetAngle(10, 512, 256)
 
     def init(self):
         self.up.CDS_SetAngle(LFOOT, 468, 512)
@@ -380,7 +388,7 @@ class Robot:
         self.up.CDS_SetAngle(RHAND, 780, 256)
 
     def reinit(self):
-        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LSHOULDER_X, RSHOULDER_X]
+        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
@@ -467,7 +475,31 @@ class Robot:
         self.up.CDS_SetSpeed(LWHEEL, 340 + output)
 
     def push_tag(self):
-        pass
+        forward(500)
+        # 准备推动
+        self.up.CDS_SetAngle(LFOOT, 468, 256)
+        self.up.CDS_SetAngle(RFOOT, 468, 256)
+        self.up.CDS_SetAngle(LELBOW, 300, 256)
+        self.up.CDS_SetAngle(RELBOW, 300, 256)
+        self.up.CDS_SetAngle(LSHOULDER, 808, 256)
+        self.up.CDS_SetAngle(RSHOULDER, 216, 256)
+        time.sleep(0.5)
+        # 挥动肩膀推下标签
+        self.up.CDS_SetAngle(LSHOULDER, 650, 512)
+        self.up.CDS_SetAngle(RSHOULDER, 380, 512)
+        time.sleep(0.5)
+        # 推下完毕，恢复姿态，后退
+        self.up.CDS_SetAngle(LSHOULDER, 808, 256)
+        self.up.CDS_SetAngle(RSHOULDER, 216, 256)
+        self.up.CDS_SetAngle(LELBOW, 206, 256)
+        self.up.CDS_SetAngle(RELBOW, 206, 256)
+        self.up.CDS_SetAngle(LFOOT, 512, 256)
+        self.up.CDS_SetAngle(RFOOT, 512, 256)
+        time.sleep(0.5)
+        self.go_back()
+        self.turn_left()
+        self.turn_left()
+        self.forward(600)
 
     def main(self):
         self.reinit()
@@ -486,7 +518,7 @@ class Robot:
         attack_times = 0  # 记录攻击次数，每一轮攻击超过3次自动后退逃跑
         is_init = 1
 
-        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND, LSHOULDER_X, RSHOULDER_X]
+        servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
@@ -497,6 +529,7 @@ class Robot:
 
         self.init()
         time.sleep(2)
+        self.reset_to_512()
         self.boost()
         time.sleep(0.2)
         self.forward()
