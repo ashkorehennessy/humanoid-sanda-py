@@ -8,7 +8,7 @@ from pid import pid
 from atag import Atag
 from up_controller import UpController
 
-
+is_hit=0
 
 RWHEEL = 1
 LWHEEL = 2
@@ -20,6 +20,7 @@ RFOOT = 7
 RSHOULDER = 8
 RELBOW = 9
 RHAND = 10
+
 
 class Robot:
     def __init__(self):
@@ -39,13 +40,14 @@ class Robot:
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
         signal.signal(signal.SIGINT, self.signal_handler)
-        self.video_width = 640
-        self.video_height = 480
+        self.video_width = 320
+        self.video_height = 240
 
     def init_video(self):
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_height)
+        _,self.image = self.cap.read()
 
     def signal_handler(self, sig, frame):
         self.stop()
@@ -69,22 +71,22 @@ class Robot:
         self.up.CDS_SetAngle(10, 512, 256)
 
     def init(self):
-        self.up.CDS_SetAngle(LFOOT, 512, 384)
-        self.up.CDS_SetAngle(RFOOT, 512, 384)
+        self.up.CDS_SetAngle(LFOOT, 552, 384)
+        self.up.CDS_SetAngle(RFOOT, 552, 384)
         self.up.CDS_SetAngle(LSHOULDER, 512, 384)
         self.up.CDS_SetAngle(RSHOULDER, 512, 384)
-        time.sleep(0.7)
+        time.sleep(0.5)
         self.up.CDS_SetAngle(LHAND, 512, 384)
         self.up.CDS_SetAngle(RHAND, 512, 384)
-        time.sleep(0.7)
+        time.sleep(0.5)
         self.up.CDS_SetAngle(LELBOW, 512, 384)
         self.up.CDS_SetAngle(RELBOW, 512, 384)
-        time.sleep(0.7)
+        time.sleep(0.5)
         self.up.CDS_SetAngle(LSHOULDER, 818, 384)
         self.up.CDS_SetAngle(RSHOULDER, 206, 384)
         time.sleep(0.5)
-        self.up.CDS_SetAngle(LELBOW, 206, 384)
-        self.up.CDS_SetAngle(RELBOW, 206, 384)
+        self.up.CDS_SetAngle(LELBOW, 256, 384)
+        self.up.CDS_SetAngle(RELBOW, 256, 384)
         time.sleep(0.5)
 
     def forward(self,ms=100):
@@ -403,6 +405,7 @@ class Robot:
         #self.up.CDS_SetAngle(RFOOT, 468, 256)
 
         auto_pilot_index = 0
+        print(333)
         if self.up_controller.io_data[0] == 1:
             auto_pilot_index += 1
         if self.up_controller.io_data[1] == 1:
@@ -451,56 +454,71 @@ class Robot:
             pass
 
     def detect_tag(self):
-        _, image = self.cap.read()
-        results = self.atag.detect(image)
-        # 确认是否找到标签
-        if results is None:
+        global is_hit
+        if is_hit == 1:
+            _,self.image = self.cap.read()
+            is_hit=0
             return 0
-        # 确认标签ID
-        if self.atag.get_id(results) != 0:
-            return 0
-        # 使用标签实际大小判断距离
-        tag_size = self.atag.get_size(results)
-        if tag_size > 600:
-            self.stop()
-            self.push_tag()
-        # 获取标签x坐标，与屏幕中心作差值进行pid运算
-        tag_x = self.atag.get_center(results)[0]
-        input_value = tag_x - self.video_width / 2
-        output = self.pid.update(input_value,0)
-        # 控制轮子差速
-        self.up.CDS_SetSpeed(RWHEEL, -330 + output)
-        self.up.CDS_SetSpeed(LWHEEL, 340 + output)
+        else:
+            while True:
+                _,self.image = self.cap.read()
+                results = self.atag.detect(self.image)
+                if len(results) == 0:
+                    break
+                # 确认标签ID
+                tag_id = self.atag.get_id(results)
+                # 使用标签实际大小判断距离
+                tag_size = self.atag.get_size(results)
+                print("id:"+str(tag_id)+" size:"+str(tag_size),end="")
+                if tag_size > 37:
+                    self.push_tag()
+                    time.sleep(1)
+                    is_hit=1
+                    _,self.image = self.cap.read()
+                    break
+                # 获取标签x坐标，与屏幕中心作差值进行pid运算
+                tag_x = self.atag.get_center(results)[0]
+                input_value = tag_x - self.video_width / 2
+                output = self.pid.update(input_value,0)
+                print(" x:"+str(tag_x)+" pid_output:"+str(output))
+                # 控制轮子差速
+                self.up.CDS_SetSpeed(RWHEEL, -330 - output)
+                self.up.CDS_SetSpeed(LWHEEL, 340 - output)
 
     def push_tag(self):
-        forward(500)
+        self.forward(800)
         # 准备推动
-        self.up.CDS_SetAngle(LFOOT, 468, 256)
-        self.up.CDS_SetAngle(RFOOT, 468, 256)
-        self.up.CDS_SetAngle(LELBOW, 300, 256)
-        self.up.CDS_SetAngle(RELBOW, 300, 256)
-        self.up.CDS_SetAngle(LSHOULDER, 808, 256)
-        self.up.CDS_SetAngle(RSHOULDER, 216, 256)
-        time.sleep(0.5)
+        self.stop()
+        self.up.CDS_SetAngle(LFOOT, 485, 256)
+        self.up.CDS_SetAngle(RFOOT, 485, 256)
+        self.up.CDS_SetAngle(LELBOW, 350, 256)
+        self.up.CDS_SetAngle(RELBOW, 350, 256)
+        self.up.CDS_SetAngle(LSHOULDER, 878, 256)
+        self.up.CDS_SetAngle(RSHOULDER, 146, 256)
+        time.sleep(0.4)
+        # 抬起手臂
+        self.up.CDS_SetAngle(LELBOW, 435, 512)
+        self.up.CDS_SetAngle(RELBOW, 435, 512)
+        time.sleep(0.4)
         # 挥动肩膀推下标签
-        self.up.CDS_SetAngle(LSHOULDER, 650, 512)
-        self.up.CDS_SetAngle(RSHOULDER, 380, 512)
-        time.sleep(0.5)
+        self.up.CDS_SetAngle(LSHOULDER, 640, 768)
+        self.up.CDS_SetAngle(RSHOULDER, 384, 768)
+        time.sleep(0.4)
         # 推下完毕，恢复姿态，后退
         self.up.CDS_SetAngle(LSHOULDER, 808, 256)
         self.up.CDS_SetAngle(RSHOULDER, 216, 256)
-        self.up.CDS_SetAngle(LELBOW, 206, 256)
-        self.up.CDS_SetAngle(RELBOW, 206, 256)
-        self.up.CDS_SetAngle(LFOOT, 512, 256)
-        self.up.CDS_SetAngle(RFOOT, 512, 256)
-        time.sleep(0.5)
+        self.up.CDS_SetAngle(LELBOW, 256, 256)
+        self.up.CDS_SetAngle(RELBOW, 256, 256)
+        self.up.CDS_SetAngle(LFOOT, 552, 256)
+        self.up.CDS_SetAngle(RFOOT, 552, 256)
+        time.sleep(1.0)
         self.go_back()
         self.turn_left()
         self.turn_left()
-        self.forward(600)
+        self.forward(1000)
 
     def main(self):
-        #self.init_video()
+        self.init_video()
         self.reconfig()
         self.init()
 
@@ -522,20 +540,24 @@ class Robot:
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
-        time.sleep(3)
+        #time.sleep(3)
 
         #while self.up_controller.adc_data[1] < 150:
         #    pass  # 接近头部时跳出循环
-
-        self.init()
-        time.sleep(2)
-        self.reset_to_512()
-        self.boost()
-        time.sleep(0.2)
-        self.forward()
+        #time.sleep(2)
+        #self.reset_to_512()
+        #self.boost()
+        #time.sleep(0.2)
+        #self.forward()
+        self.stop()
+        count=0
 
         while True:
             self.autopilot()
+            _,self.image = self.cap.read()
+            self.detect_tag()
+            
+
 
 
 if __name__ == '__main__':
