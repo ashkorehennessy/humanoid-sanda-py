@@ -20,6 +20,18 @@ class Atag:
         return np.array(result.center).astype(int)
     
     def get_size(self, results):
-        result = results[0]
-        return int(((result.corners[0][1] - result.corners[1][1]) + (result.corners[3][1] - result.corners[2][1])) / 2)
+        size_list=[]
+        for result in results:
+            line_list=[]
+            (ptA, ptB, ptC, ptD) = result.corners
+            ptB = (int(ptB[0]), int(ptB[1]))
+            ptC = (int(ptC[0]), int(ptC[1]))
+            ptD = (int(ptD[0]), int(ptD[1]))
+            ptA = (int(ptA[0]), int(ptA[1]))
+            line_list.append(np.linalg.norm(np.array(ptA)-np.array(ptB)))
+            line_list.append(np.linalg.norm(np.array(ptB)-np.array(ptC)))
+            line_list.append(np.linalg.norm(np.array(ptC)-np.array(ptD)))
+            line_list.append(np.linalg.norm(np.array(ptD)-np.array(ptA)))
+            size_list.append(max(line_list))
+        return int(max(size_list))
 
