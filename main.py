@@ -126,36 +126,36 @@ class Robot:
     def front_0(self):
         self.up.CDS_SetAngle(LSHOULDER, 70, 780)
         self.up.CDS_SetAngle(RSHOULDER, 140, 780)
-    
+
     def front_1(self):
         self.up.CDS_SetAngle(LELBOW, 910, 768)
         self.up.CDS_SetAngle(RELBOW, 90, 768)
         self.up.CDS_SetAngle(LHAND, 570, 768)
         self.up.CDS_SetAngle(RHAND, 512, 768)
-    
+
     def back_1(self):
         self.up.CDS_SetAngle(LELBOW, 910, 768)
         self.up.CDS_SetAngle(RELBOW, 90, 768)
         self.up.CDS_SetAngle(LHAND, 570, 768)
         self.up.CDS_SetAngle(RHAND, 512, 768)
-    
+
     def front_2(self):
         self.up.CDS_SetAngle(LSHOULDER, 140, 768)
         self.up.CDS_SetAngle(RSHOULDER, 170, 768)
-    
+
     def back_2(self):
         self.up.CDS_SetAngle(LSHOULDER, 880, 768)
         self.up.CDS_SetAngle(RSHOULDER, 870, 768)
-    
+
     def front_3(self):
         self.up.CDS_SetAngle(LHAND, 130, 768)
         self.up.CDS_SetAngle(RHAND, 900, 768)
-    
+
     def back_3(self):
         self.up.CDS_SetAngle(LHAND, 130, 768)
         self.up.CDS_SetAngle(RHAND, 900, 768)
-        
-    
+
+
     def front_4(self):
         self.up.CDS_SetAngle(LELBOW, 700, 768)
         self.up.CDS_SetAngle(LHAND, 342, 768)
@@ -163,7 +163,7 @@ class Robot:
         self.up.CDS_SetAngle(RHAND, 710, 768)
         self.up.CDS_SetAngle(LFOOT, 853, 512)
         self.up.CDS_SetAngle(RFOOT, 860, 512)
-    
+
     def back_4(self):
         self.up.CDS_SetAngle(LELBOW, 700, 768)
         self.up.CDS_SetAngle(LHAND, 342, 768)
@@ -467,6 +467,10 @@ class Robot:
                     break
                 # 确认标签ID
                 tag_id = self.atag.get_id(results)
+                if tag_id != 0:
+                    is_hit=1
+                    _,self.image = self.cap.read()
+                    break
                 # 使用标签实际大小判断距离
                 tag_size = self.atag.get_size(results)
                 print("id:"+str(tag_id)+" size:"+str(tag_size),end="")
@@ -486,11 +490,11 @@ class Robot:
                 self.up.CDS_SetSpeed(LWHEEL, 340 - output)
 
     def push_tag(self):
-        self.forward(800)
+        self.forward(700)
         # 准备推动
         self.stop()
-        self.up.CDS_SetAngle(LFOOT, 485, 256)
-        self.up.CDS_SetAngle(RFOOT, 485, 256)
+        self.up.CDS_SetAngle(LFOOT, 490, 256)
+        self.up.CDS_SetAngle(RFOOT, 490, 256)
         self.up.CDS_SetAngle(LELBOW, 350, 256)
         self.up.CDS_SetAngle(RELBOW, 350, 256)
         self.up.CDS_SetAngle(LSHOULDER, 878, 256)
@@ -556,7 +560,7 @@ class Robot:
             self.autopilot()
             _,self.image = self.cap.read()
             self.detect_tag()
-            
+
 
 
 
