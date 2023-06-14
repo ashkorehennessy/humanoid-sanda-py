@@ -40,8 +40,8 @@ class Robot:
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
         signal.signal(signal.SIGINT, self.signal_handler)
-        self.video_width = 320
-        self.video_height = 240
+        self.video_width = 640
+        self.video_height = 480
 
     def init_video(self):
         self.cap = cv2.VideoCapture(0)
@@ -85,8 +85,8 @@ class Robot:
         self.up.CDS_SetAngle(LSHOULDER, 818, 384)
         self.up.CDS_SetAngle(RSHOULDER, 206, 384)
         time.sleep(0.5)
-        self.up.CDS_SetAngle(LELBOW, 256, 384)
-        self.up.CDS_SetAngle(RELBOW, 256, 384)
+        self.up.CDS_SetAngle(LELBOW, 206, 384)
+        self.up.CDS_SetAngle(RELBOW, 206, 384)
         time.sleep(0.5)
 
     def forward(self,ms=100):
@@ -105,8 +105,8 @@ class Robot:
         time.sleep(0.3)
 
     def go_back(self):
-        self.up.CDS_SetSpeed(RWHEEL, 450)
-        self.up.CDS_SetSpeed(LWHEEL, -470)
+        self.up.CDS_SetSpeed(RWHEEL, 480)
+        self.up.CDS_SetSpeed(LWHEEL, -500)
         time.sleep(0.4)
 
     def turn_left(self):
@@ -122,98 +122,63 @@ class Robot:
     def stop(self):
         self.up.CDS_SetSpeed(RWHEEL, 0)
         self.up.CDS_SetSpeed(LWHEEL, 0)
-
-    def front_0(self):
-        self.up.CDS_SetAngle(LSHOULDER, 70, 780)
-        self.up.CDS_SetAngle(RSHOULDER, 140, 780)
-
-    def front_1(self):
-        self.up.CDS_SetAngle(LELBOW, 910, 768)
-        self.up.CDS_SetAngle(RELBOW, 90, 768)
-        self.up.CDS_SetAngle(LHAND, 570, 768)
-        self.up.CDS_SetAngle(RHAND, 512, 768)
-
+    
     def back_1(self):
-        self.up.CDS_SetAngle(LELBOW, 910, 768)
-        self.up.CDS_SetAngle(RELBOW, 90, 768)
-        self.up.CDS_SetAngle(LHAND, 570, 768)
-        self.up.CDS_SetAngle(RHAND, 512, 768)
-
-    def front_2(self):
-        self.up.CDS_SetAngle(LSHOULDER, 140, 768)
-        self.up.CDS_SetAngle(RSHOULDER, 170, 768)
-
-    def back_2(self):
-        self.up.CDS_SetAngle(LSHOULDER, 880, 768)
-        self.up.CDS_SetAngle(RSHOULDER, 870, 768)
-
-    def front_3(self):
-        self.up.CDS_SetAngle(LHAND, 130, 768)
-        self.up.CDS_SetAngle(RHAND, 900, 768)
-
-    def back_3(self):
-        self.up.CDS_SetAngle(LHAND, 130, 768)
-        self.up.CDS_SetAngle(RHAND, 900, 768)
-
-
-    def front_4(self):
-        self.up.CDS_SetAngle(LELBOW, 700, 768)
-        self.up.CDS_SetAngle(LHAND, 342, 768)
-        self.up.CDS_SetAngle(RELBOW, 346, 768)
-        self.up.CDS_SetAngle(RHAND, 710, 768)
-        self.up.CDS_SetAngle(LFOOT, 853, 512)
-        self.up.CDS_SetAngle(RFOOT, 860, 512)
-
-    def back_4(self):
-        self.up.CDS_SetAngle(LELBOW, 700, 768)
-        self.up.CDS_SetAngle(LHAND, 342, 768)
-        self.up.CDS_SetAngle(RELBOW, 346, 768)
-        self.up.CDS_SetAngle(RHAND, 710, 768)
-        self.up.CDS_SetAngle(LFOOT, 221, 512)
-        self.up.CDS_SetAngle(RFOOT, 214, 512)
-
-    def front_5(self):
-        self.boost()
-        self.boost()
-        self.boost()
-        self.stop()
-        time.sleep(0.5)
-        self.up.CDS_SetAngle(LELBOW, 550, 300)
-        self.up.CDS_SetAngle(RELBOW, 512, 300)
-        self.up.CDS_SetAngle(LHAND, 520, 300)
-        self.up.CDS_SetAngle(RHAND, 512, 300)
+        self.up.CDS_SetAngle(LELBOW, 818, 768)
+        self.up.CDS_SetAngle(RELBOW, 818, 768)
+        self.up.CDS_SetAngle(LHAND, 718, 768)
+        self.up.CDS_SetAngle(RHAND, 306, 768)
         self.up.CDS_SetAngle(LSHOULDER, 512, 768)
         self.up.CDS_SetAngle(RSHOULDER, 512, 768)
-        self.up.CDS_SetAngle(LFOOT, 468, 300)
-        self.up.CDS_SetAngle(RFOOT, 468, 300)
-        self.up.CDS_SetSpeed(RWHEEL, -700)
-        self.up.CDS_SetSpeed(LWHEEL, 740)
-        time.sleep(0.2)
-        self.up.CDS_SetSpeed(RWHEEL, -310)
-        self.up.CDS_SetSpeed(LWHEEL, 330)
-        time.sleep(0.75)
-        self.up.stop()
+    
+    def back_2(self):
+        self.up.CDS_SetAngle(LSHOULDER, 206, 768)
+        self.up.CDS_SetAngle(RSHOULDER, 818, 768)
+    
+    def back_3(self):
+        self.up.CDS_SetAngle(LELBOW, 450, 768)
+        self.up.CDS_SetAngle(RELBOW, 450, 768)
+        self.up.CDS_SetAngle(LFOOT, 790, 768)
+        self.up.CDS_SetAngle(RFOOT, 790, 768)
+      
+    def back_4(self):
+        self.up.CDS_SetAngle(LHAND, 512, 908)
+        self.up.CDS_SetAngle(RHAND, 512, 908)
+        self.up.CDS_SetAngle(LFOOT, 472, 908)
+        self.up.CDS_SetAngle(RFOOT, 472, 908)
+        time.sleep(0.1)
+        self.up.CDS_SetAngle(LELBOW, 236, 512)
+        self.up.CDS_SetAngle(RELBOW, 236, 512)
+        self.go_back()
+        self.up.CDS_SetAngle(LELBOW, 206, 768)
+        self.up.CDS_SetAngle(RELBOW, 206, 768)
+        self.up.CDS_SetAngle(LFOOT, 512, 768)
+        self.up.CDS_SetAngle(RFOOT, 512, 768)
+        self.up.CDS_SetAngle(LSHOULDER, 818, 768)
+        self.up.CDS_SetAngle(RSHOULDER, 206, 768)
+        time.sleep(0.3)
+        self.stop()
+
+
 
     def back_5(self):
-        self.go_back()
-        self.go_back()
-        self.up.stop()
+        #self.go_back()
+        #self.stop()
+        #time.sleep(0.5)
+        #self.up.CDS_SetAngle(LFOOT, 512, 800)
+        #self.up.CDS_SetAngle(RFOOT, 512, 800)
+        #self.up.CDS_SetAngle(LHAND, 512, 800)
+        #self.up.CDS_SetAngle(RHAND, 512, 800)
+        #time.sleep(0.3)
+        #self.up.CDS_SetSpeed(RWHEEL, 740)
+        #self.up.CDS_SetSpeed(LWHEEL, -700)
         time.sleep(0.5)
-        self.up.CDS_SetAngle(LELBOW, 550, 300)
-        self.up.CDS_SetAngle(RELBOW, 512, 300)
-        self.up.CDS_SetAngle(LHAND, 520, 300)
-        self.up.CDS_SetAngle(RHAND, 512, 300)
-        self.up.CDS_SetAngle(LSHOULDER, 512, 768)
-        self.up.CDS_SetAngle(RSHOULDER, 512, 768)
-        self.up.CDS_SetAngle(LFOOT, 468, 300)
-        self.up.CDS_SetAngle(RFOOT, 468, 300)
-        self.up.CDS_SetSpeed(RWHEEL, 740)
-        self.up.CDS_SetSpeed(LWHEEL, -700)
-        time.sleep(0.2)
-        self.up.CDS_SetSpeed(RWHEEL, 330)
-        self.up.CDS_SetSpeed(LWHEEL, -310)
-        time.sleep(0.75)
-        self.up.stop()
+        self.stop()
+        # time.sleep(0.2)
+        # self.up.CDS_SetSpeed(RWHEEL, 330)
+        # self.up.CDS_SetSpeed(LWHEEL, -310)
+        # time.sleep(0.75)
+        # self.stop()
 
     def front_stand(self):
         time.sleep(0.3)
@@ -231,8 +196,6 @@ class Robot:
         time.sleep(1.0)
 
     def back_stand(self):
-        self.init()
-        time.sleep(0.5)
         self.back_1()
         time.sleep(0.6)
         self.back_2()
@@ -474,7 +437,7 @@ class Robot:
                 # 使用标签实际大小判断距离
                 tag_size = self.atag.get_size(results)
                 print("id:"+str(tag_id)+" size:"+str(tag_size),end="")
-                if tag_size > 37:
+                if tag_size > 69:
                     self.push_tag()
                     time.sleep(1)
                     is_hit=1
@@ -490,29 +453,31 @@ class Robot:
                 self.up.CDS_SetSpeed(LWHEEL, 340 - output)
 
     def push_tag(self):
-        self.forward(700)
+        self.up.CDS_SetSpeed(RWHEEL, -290)
+        self.up.CDS_SetSpeed(LWHEEL, 300)
+        time.sleep(0.6)
         # 准备推动
         self.stop()
-        self.up.CDS_SetAngle(LFOOT, 490, 256)
-        self.up.CDS_SetAngle(RFOOT, 490, 256)
-        self.up.CDS_SetAngle(LELBOW, 350, 256)
-        self.up.CDS_SetAngle(RELBOW, 350, 256)
-        self.up.CDS_SetAngle(LSHOULDER, 878, 256)
-        self.up.CDS_SetAngle(RSHOULDER, 146, 256)
+        self.up.CDS_SetAngle(LFOOT, 483, 256)
+        self.up.CDS_SetAngle(RFOOT, 483, 256)
+        self.up.CDS_SetAngle(LELBOW, 240, 256)
+        self.up.CDS_SetAngle(RELBOW, 240, 256)
+        self.up.CDS_SetAngle(LSHOULDER, 908, 256)
+        self.up.CDS_SetAngle(RSHOULDER, 116, 256)
         time.sleep(0.4)
         # 抬起手臂
-        self.up.CDS_SetAngle(LELBOW, 435, 512)
-        self.up.CDS_SetAngle(RELBOW, 435, 512)
-        time.sleep(0.4)
+        self.up.CDS_SetAngle(LELBOW, 355, 900)
+        self.up.CDS_SetAngle(RELBOW, 355, 900)
+        time.sleep(0.3)
         # 挥动肩膀推下标签
-        self.up.CDS_SetAngle(LSHOULDER, 640, 768)
-        self.up.CDS_SetAngle(RSHOULDER, 384, 768)
-        time.sleep(0.4)
+        self.up.CDS_SetAngle(LSHOULDER, 512, 1000)
+        self.up.CDS_SetAngle(RSHOULDER, 512, 1000)
+        time.sleep(0.5)
         # 推下完毕，恢复姿态，后退
         self.up.CDS_SetAngle(LSHOULDER, 808, 256)
         self.up.CDS_SetAngle(RSHOULDER, 216, 256)
-        self.up.CDS_SetAngle(LELBOW, 256, 256)
-        self.up.CDS_SetAngle(RELBOW, 256, 256)
+        self.up.CDS_SetAngle(LELBOW, 206, 256)
+        self.up.CDS_SetAngle(RELBOW, 206, 256)
         self.up.CDS_SetAngle(LFOOT, 552, 256)
         self.up.CDS_SetAngle(RFOOT, 552, 256)
         time.sleep(1.0)
@@ -524,7 +489,7 @@ class Robot:
     def main(self):
         self.init_video()
         self.reconfig()
-        self.init()
+        #self.init()
 
         enemy_L1 = 0  # 左前方敌人检测
         enemy_L2 = 0  # 左侧敌人检测
@@ -557,12 +522,13 @@ class Robot:
         count=0
 
         while True:
-            self.autopilot()
-            _,self.image = self.cap.read()
-            self.detect_tag()
-
-
-
+            #self.autopilot()
+            #_,self.image = self.cap.read()
+            #self.detect_tag()
+            #self.reset_to_512()
+            self.back_stand()
+            time.sleep(10)
+            
 
 if __name__ == '__main__':
     robot = Robot()
