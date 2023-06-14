@@ -105,8 +105,8 @@ class Robot:
         time.sleep(0.3)
 
     def go_back(self):
-        self.up.CDS_SetSpeed(RWHEEL, 480)
-        self.up.CDS_SetSpeed(LWHEEL, -500)
+        self.up.CDS_SetSpeed(RWHEEL, 500)
+        self.up.CDS_SetSpeed(LWHEEL, -520)
         time.sleep(0.4)
 
     def turn_left(self):
@@ -126,8 +126,8 @@ class Robot:
     def back_1(self):
         self.up.CDS_SetAngle(LELBOW, 818, 768)
         self.up.CDS_SetAngle(RELBOW, 818, 768)
-        self.up.CDS_SetAngle(LHAND, 718, 768)
-        self.up.CDS_SetAngle(RHAND, 306, 768)
+        self.up.CDS_SetAngle(LHAND, 698, 768)
+        self.up.CDS_SetAngle(RHAND, 326, 768)
         self.up.CDS_SetAngle(LSHOULDER, 512, 768)
         self.up.CDS_SetAngle(RSHOULDER, 512, 768)
     
@@ -156,7 +156,13 @@ class Robot:
         self.up.CDS_SetAngle(RFOOT, 512, 768)
         self.up.CDS_SetAngle(LSHOULDER, 818, 768)
         self.up.CDS_SetAngle(RSHOULDER, 206, 768)
-        time.sleep(0.3)
+        time.sleep(0.2)
+        self.up.CDS_SetSpeed(RWHEEL, 350)
+        self.up.CDS_SetSpeed(LWHEEL, -370)
+        time.sleep(0.1)
+        self.up.CDS_SetAngle(LFOOT, 542, 768)
+        self.up.CDS_SetAngle(RFOOT, 542, 768)
+        time.sleep(0.1)
         self.stop()
 
 
@@ -199,9 +205,9 @@ class Robot:
         self.back_1()
         time.sleep(0.6)
         self.back_2()
-        time.sleep(0.6)
+        time.sleep(0.2)
         self.back_3()
-        time.sleep(1.0)
+        time.sleep(0.9)
         self.back_4()
         time.sleep(0.9)
         self.back_5()
