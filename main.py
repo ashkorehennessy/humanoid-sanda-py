@@ -38,8 +38,8 @@ class Robot:
         self.pid = pid()
         self.up.ADC_IO_Open()
         self.up.LCD_Open(2)
-        #self.up.ADC_Led_SetColor(0, 0x07E0)
-        #self.up.ADC_Led_SetColor(1, 0x07E0)
+        # self.up.ADC_Led_SetColor(0, 0x07E0)
+        # self.up.ADC_Led_SetColor(1, 0x07E0)
         self.up.LCD_PutString(10, 0, '666')
         self.up.LCD_Refresh()
         self.up.CDS_Open()
@@ -51,15 +51,15 @@ class Robot:
         self.video_width = 640
         self.video_height = 480
         self.cap = cv2.VideoCapture(0)
-        self.detect_tag_thread = threading.Thread(name="detect_tag_thread",target=self.detect_tag)
-        self.autopilot_thread = threading.Thread(name="autopilot_thread",target=self.autopilot)
+        self.detect_tag_thread = threading.Thread(name="detect_tag_thread", target=self.detect_tag)
+        self.autopilot_thread = threading.Thread(name="autopilot_thread", target=self.autopilot)
 
     def init_video(self):
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_height)
-        _,self.image = self.cap.read()
+        _, self.image = self.cap.read()
 
-    def signal_handler(self, sig, frame):
+    def signal_handler(self):
         self.stop()
         exit(0)
 
@@ -99,7 +99,7 @@ class Robot:
         self.up.CDS_SetAngle(RELBOW, 206, 384)
         time.sleep(0.5)
 
-    def forward(self,ms=100):
+    def forward(self, ms=100):
         self.up.CDS_SetSpeed(RWHEEL, -330)
         self.up.CDS_SetSpeed(LWHEEL, 340)
         time.sleep(ms/1000)
@@ -175,26 +175,20 @@ class Robot:
         time.sleep(0.1)
         self.stop()
 
+    def front_0(self):
+        pass
 
+    def front_1(self):
+        pass
 
-    def back_5(self):
-        #self.go_back()
-        #self.stop()
-        #time.sleep(0.5)
-        #self.up.CDS_SetAngle(LFOOT, 512, 800)
-        #self.up.CDS_SetAngle(RFOOT, 512, 800)
-        #self.up.CDS_SetAngle(LHAND, 512, 800)
-        #self.up.CDS_SetAngle(RHAND, 512, 800)
-        #time.sleep(0.3)
-        #self.up.CDS_SetSpeed(RWHEEL, 740)
-        #self.up.CDS_SetSpeed(LWHEEL, -700)
-        time.sleep(0.5)
-        self.stop()
-        # time.sleep(0.2)
-        # self.up.CDS_SetSpeed(RWHEEL, 330)
-        # self.up.CDS_SetSpeed(LWHEEL, -310)
-        # time.sleep(0.75)
-        # self.stop()
+    def front_2(self):
+        pass
+
+    def front_3(self):
+        pass
+
+    def front_4(self):
+        pass
 
     def front_stand(self):
         time.sleep(0.3)
@@ -208,8 +202,6 @@ class Robot:
         time.sleep(1.0)
         self.front_4()
         time.sleep(0.9)
-        self.front_5()
-        time.sleep(1.0)
 
     def back_stand(self):
         self.back_1()
@@ -220,8 +212,6 @@ class Robot:
         time.sleep(0.9)
         self.back_4()
         time.sleep(0.9)
-        self.back_5()
-        time.sleep(1.0)
 
     def hit_left(self):
         self.up.CDS_SetAngle(LFOOT, 462, 650)
@@ -389,8 +379,8 @@ class Robot:
                 while tag_size > 69:
                     condition.wait()
                 # 腿部姿态修正
-                #self.up.CDS_SetAngle(LFOOT, 552, 384)
-                #self.up.CDS_SetAngle(RFOOT, 552, 384)
+                # self.up.CDS_SetAngle(LFOOT, 552, 384)
+                # self.up.CDS_SetAngle(RFOOT, 552, 384)
 
                 auto_pilot_index = 0
                 if self.up_controller.io_data[0] == 1:
@@ -455,7 +445,7 @@ class Robot:
                 tag_size_lock.acquire()
                 tag_size = 0
                 tag_size_lock.release()
-                _,self.image = self.cap.read()
+                _, self.image = self.cap.read()
                 results = self.atag.detect(self.image)
                 if len(results) == 0:
                     continue
@@ -467,7 +457,7 @@ class Robot:
                 tag_size_lock.acquire()
                 tag_size = self.atag.get_size(results)
                 tag_size_lock.release()
-                print("id:"+str(tag_id)+" size:"+str(tag_size),end="")
+                print("id:"+str(tag_id)+" size:"+str(tag_size), end="")
                 if tag_size > 69:
                     print("")
                     print("push")
@@ -478,7 +468,7 @@ class Robot:
                 tag_x = self.atag.get_center(results)[0]
                 input_value = tag_x - self.video_width / 2
                 pid_output_lock.acquire()
-                pid_output = self.pid.update(input_value,0)
+                pid_output = self.pid.update(input_value, 0)
                 print(" x:"+str(tag_x)+" pid_output:"+str(pid_output))
                 pid_output_lock.release()
 
@@ -519,45 +509,44 @@ class Robot:
     def main(self):
         self.init_video()
         self.reconfig()
-        #self.init()
+        # self.init()
 
-        enemy_L1 = 0  # 左前方敌人检测
-        enemy_L2 = 0  # 左侧敌人检测
-        enemy_R1 = 0  # 右前方敌人检测
-        enemy_R2 = 0  # 右侧敌人检测
-        enemy_FRONT = 0  # 前方敌人检测
-        enemy_BACK = 0  # 后方敌人检测
-
-        angle = 0  # 倾角数值
-        distance = 0  # 距离数值，距离越近数值越大
-
-        attacking = 0  # 正在攻击
-        attack_times = 0  # 记录攻击次数，每一轮攻击超过3次自动后退逃跑
-        is_init = 1
+        # enemy_L1 = 0  # 左前方敌人检测
+        # enemy_L2 = 0  # 左侧敌人检测
+        # enemy_R1 = 0  # 右前方敌人检测
+        # enemy_R2 = 0  # 右侧敌人检测
+        # enemy_FRONT = 0  # 前方敌人检测
+        # enemy_BACK = 0  # 后方敌人检测
+        #
+        # angle = 0  # 倾角数值
+        # distance = 0  # 距离数值，距离越近数值越大
+        #
+        # attacking = 0  # 正在攻击
+        # attack_times = 0  # 记录攻击次数，每一轮攻击超过3次自动后退逃跑
+        # is_init = 1
 
         servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
         motor_ids = [RWHEEL, LWHEEL]
         self.up_controller.set_cds_mode(servo_ids, 0)
         self.up_controller.set_cds_mode(motor_ids, 1)
-        #time.sleep(3)
+        # time.sleep(3)
 
-        #while self.up_controller.adc_data[1] < 150:
-        #    pass  # 接近头部时跳出循环
-        #time.sleep(2)
-        #self.reset_to_512()
-        #self.boost()
-        #time.sleep(0.2)
-        #self.forward()
+        # while self.up_controller.adc_data[1] < 150:
+        #     pass  # 接近头部时跳出循环
+        # time.sleep(2)
+        # self.reset_to_512()
+        # self.boost()
+        # time.sleep(0.2)
+        # self.forward()
         self.stop()
         self.autopilot_thread.start()
         self.detect_tag_thread.start()
-        count=0
 
         while True:
-            #self.autopilot()
-            #_,self.image = self.cap.read()
-            #self.detect_tag()
-            #self.reset_to_512()
+            # self.autopilot()
+            # _, self.image = self.cap.read()
+            # self.detect_tag()
+            # self.reset_to_512()
             self.back_stand()
             time.sleep(10)
 
