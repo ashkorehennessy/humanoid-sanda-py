@@ -4,11 +4,18 @@ import uptech
 import time
 import signal
 import cv2
+import threading
 from pid import pid
 from atag import Atag
 from up_controller import UpController
 
-is_hit=0
+condition = threading.Condition()
+
+pid_output = 0
+pid_output_lock = threading.Lock()
+
+tag_size = 0
+tag_size_lock = threading.Lock()
 
 RWHEEL = 1
 LWHEEL = 2
@@ -24,6 +31,7 @@ RHAND = 10
 
 class Robot:
     def __init__(self):
+        self.image = None
         self.up = uptech.UpTech()
         self.up_controller = UpController()
         self.atag = Atag()
@@ -42,9 +50,11 @@ class Robot:
         signal.signal(signal.SIGINT, self.signal_handler)
         self.video_width = 640
         self.video_height = 480
+        self.cap = cv2.VideoCapture(0)
+        self.detect_tag_thread = threading.Thread(name="detect_tag_thread",target=self.detect_tag)
+        self.autopilot_thread = threading.Thread(name="autopilot_thread",target=self.autopilot)
 
     def init_video(self):
-        self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_height)
         _,self.image = self.cap.read()
@@ -370,93 +380,107 @@ class Robot:
         self.stop()
 
     def autopilot(self):
-        #self.up.CDS_SetAngle(LFOOT, 468, 256)
-        #self.up.CDS_SetAngle(RFOOT, 468, 256)
+        global pid_output
+        global tag_size
+        global condition
 
-        auto_pilot_index = 0
-        print(333)
-        if self.up_controller.io_data[0] == 1:
-            auto_pilot_index += 1
-        if self.up_controller.io_data[1] == 1:
-            auto_pilot_index += 2
-        if self.up_controller.io_data[2] == 1:
-            auto_pilot_index += 4
-        if self.up_controller.io_data[3] == 1:
-            auto_pilot_index += 8
+        while True:
+            with condition:
+                while tag_size > 69:
+                    condition.wait()
+                # 腿部姿态修正
+                #self.up.CDS_SetAngle(LFOOT, 552, 384)
+                #self.up.CDS_SetAngle(RFOOT, 552, 384)
 
-        if auto_pilot_index == 0:
-            self.forward(ms=100)
-        elif auto_pilot_index == 1:
-            self.go_back()
-            self.turn_right()
-            self.forward(ms=500)
-        elif auto_pilot_index == 2:
-            self.turn_right()
-            self.forward(500)
-        elif auto_pilot_index == 3:
-            self.turn_right()
-            self.turn_right()
-            self.forward(1000)
-        elif auto_pilot_index == 4:
-            self.go_back()
-            self.turn_left()
-            self.forward(500)
-        elif auto_pilot_index == 5:
-            self.go_back()
-            self.turn_left()
-            self.turn_left()
-            self.forward(300)
-        elif auto_pilot_index == 8:
-            self.turn_left()
-            self.forward(500)
-        elif auto_pilot_index == 10:
-            self.boost()
-            self.boost()
-            self.forward()
-        elif auto_pilot_index == 12:
-            self.turn_left()
-            self.turn_left()
-            self.forward(500)
-        elif auto_pilot_index == 15:
-            self.stop()
-        else:
-            pass
+                auto_pilot_index = 0
+                if self.up_controller.io_data[0] == 1:
+                    auto_pilot_index += 1
+                if self.up_controller.io_data[1] == 1:
+                    auto_pilot_index += 2
+                if self.up_controller.io_data[2] == 1:
+                    auto_pilot_index += 4
+                if self.up_controller.io_data[3] == 1:
+                    auto_pilot_index += 8
+
+                if auto_pilot_index == 0:
+                    pid_output_lock.acquire()
+                    self.up.CDS_SetSpeed(RWHEEL, -330 - pid_output)
+                    self.up.CDS_SetSpeed(LWHEEL, 340 - pid_output)
+                    pid_output_lock.release()
+                elif auto_pilot_index == 1:
+                    self.go_back()
+                    self.turn_right()
+                    self.forward(500)
+                elif auto_pilot_index == 2:
+                    self.turn_right()
+                    self.forward(500)
+                elif auto_pilot_index == 3:
+                    self.turn_right()
+                    self.turn_right()
+                    self.forward(1000)
+                elif auto_pilot_index == 4:
+                    self.go_back()
+                    self.turn_left()
+                    self.forward(500)
+                elif auto_pilot_index == 5:
+                    self.go_back()
+                    self.turn_left()
+                    self.turn_left()
+                    self.forward(300)
+                elif auto_pilot_index == 8:
+                    self.turn_left()
+                    self.forward(500)
+                elif auto_pilot_index == 10:
+                    self.boost()
+                    self.boost()
+                    self.forward()
+                elif auto_pilot_index == 12:
+                    self.turn_left()
+                    self.turn_left()
+                    self.forward(500)
+                elif auto_pilot_index == 15:
+                    self.stop()
+                else:
+                    pass
 
     def detect_tag(self):
-        global is_hit
-        if is_hit == 1:
-            _,self.image = self.cap.read()
-            is_hit=0
-            return 0
-        else:
-            while True:
+        global pid_output
+        global tag_size
+        global condition
+        while True:
+            with condition:
+                pid_output_lock.acquire()
+                pid_output = 0
+                pid_output_lock.release()
+                tag_size_lock.acquire()
+                tag_size = 0
+                tag_size_lock.release()
                 _,self.image = self.cap.read()
                 results = self.atag.detect(self.image)
                 if len(results) == 0:
-                    break
+                    continue
                 # 确认标签ID
                 tag_id = self.atag.get_id(results)
                 if tag_id != 0:
-                    is_hit=1
-                    _,self.image = self.cap.read()
-                    break
+                    continue
                 # 使用标签实际大小判断距离
+                tag_size_lock.acquire()
                 tag_size = self.atag.get_size(results)
+                tag_size_lock.release()
                 print("id:"+str(tag_id)+" size:"+str(tag_size),end="")
                 if tag_size > 69:
+                    print("")
+                    print("push")
                     self.push_tag()
-                    time.sleep(1)
-                    is_hit=1
-                    _,self.image = self.cap.read()
-                    break
+                    condition.notify()
+                    continue
                 # 获取标签x坐标，与屏幕中心作差值进行pid运算
                 tag_x = self.atag.get_center(results)[0]
                 input_value = tag_x - self.video_width / 2
-                output = self.pid.update(input_value,0)
-                print(" x:"+str(tag_x)+" pid_output:"+str(output))
-                # 控制轮子差速
-                self.up.CDS_SetSpeed(RWHEEL, -330 - output)
-                self.up.CDS_SetSpeed(LWHEEL, 340 - output)
+                pid_output_lock.acquire()
+                pid_output = self.pid.update(input_value,0)
+                print(" x:"+str(tag_x)+" pid_output:"+str(pid_output))
+                pid_output_lock.release()
 
     def push_tag(self):
         self.up.CDS_SetSpeed(RWHEEL, -290)
@@ -525,6 +549,8 @@ class Robot:
         #time.sleep(0.2)
         #self.forward()
         self.stop()
+        self.autopilot_thread.start()
+        self.detect_tag_thread.start()
         count=0
 
         while True:
@@ -534,7 +560,7 @@ class Robot:
             #self.reset_to_512()
             self.back_stand()
             time.sleep(10)
-            
+
 
 if __name__ == '__main__':
     robot = Robot()
