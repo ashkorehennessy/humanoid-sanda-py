@@ -455,7 +455,7 @@ class Robot:
                     continue
                 # 使用标签实际大小判断距离
                 tag_size_lock.acquire()
-                tag_size = self.atag.get_size(results)
+                tag_size = self.atag.get_distance(results[0].homography, 114514)
                 tag_size_lock.release()
                 print("id:"+str(tag_id)+" size:"+str(tag_size), end="")
                 if tag_size > 69:
