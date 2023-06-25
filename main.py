@@ -157,7 +157,7 @@ def back_4():
     up.CDS_SetAngle(RELBOW, 370, 768)
     up.CDS_SetAngle(LFOOT, 472, 768)
     up.CDS_SetAngle(RFOOT, 472, 768)
-    time.sleep(1.4)
+    time.sleep(0.2)
     up.CDS_SetAngle(LSHOULDER, 818, 768)
     up.CDS_SetAngle(RSHOULDER, 206, 768)
     # up.CDS_SetSpeed(RWHEEL, 350)
@@ -194,25 +194,25 @@ def front_4():
 def front_stand():
     time.sleep(0.3)
     front_0()
-    time.sleep(0.7)
+    time.sleep(0.4)
     front_1()
     time.sleep(0.6)
     front_2()
     time.sleep(0.6)
     front_3()
-    time.sleep(1.0)
+    time.sleep(0.6)
     front_4()
-    time.sleep(0.9)
+    time.sleep(0.4)
 
 def back_stand():
     back_1()
-    time.sleep(1.6)
+    time.sleep(0.6)
     back_2()
-    time.sleep(1.2)
+    time.sleep(0.8)
     back_3()
-    time.sleep(1.9)
+    time.sleep(0.9)
     back_4()
-    time.sleep(1.9)
+    time.sleep(0.6)
 
 def hit_left():
     up.CDS_SetAngle(LFOOT, 462, 650)
@@ -549,26 +549,26 @@ def videocap(image):
         
 
 def main(image,flag_halt,hit):
-    init()
+    # init()
     stop()
     signal.signal(signal.SIGINT, signal_handler)
     while True:
         # _, image = cap.read()
-        detect_tag(image, flag_halt)
-        up.CDS_SetAngle(LFOOT, 552, 256)
-        up.CDS_SetAngle(RFOOT, 552, 256)
-        if hit.value == 1:
-            hit_3_L()
-        elif hit.value == 2:
-            hit_3_R()
-        elif hit.value == 3:
-            hit_2()
-        elif hit.value == 4:
-            hit_1()
-        hit.value = 0
+        # detect_tag(image, flag_halt)
+        # up.CDS_SetAngle(LFOOT, 552, 256)
+        # up.CDS_SetAngle(RFOOT, 552, 256)
+        # if hit.value == 1:
+        #     hit_3_L()
+        # elif hit.value == 2:
+        #     hit_3_R()
+        # elif hit.value == 3:
+        #     hit_2()
+        # elif hit.value == 4:
+        #     hit_1()
+        # hit.value = 0
         # reset_to_512()
-        # back_stand()
-        # time.sleep(7)
+        back_stand()
+        time.sleep(7)
 
 
 if __name__ == '__main__':
@@ -581,7 +581,7 @@ if __name__ == '__main__':
     process2 = multiprocessing.Process(target=main, args=(image,flag_halt,hit,))
     process2.start()
     process3 = multiprocessing.Process(target=autopilot, args=(flag_halt,))
-    process3.start()
+    # process3.start()
     while True:
         if sys.stdin.read(1) == 'a':
             hit.value = 1
