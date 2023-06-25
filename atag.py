@@ -7,8 +7,7 @@ class Atag:
         self.options = apriltag.DetectorOptions(families="tag36h11")
         self.detector = apriltag.Detector(self.options)
 
-    def detect(self, image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    def detect(self, gray):
         return self.detector.detect(gray)
 
     def get_id(self, results):
