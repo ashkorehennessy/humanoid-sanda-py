@@ -10,8 +10,6 @@ from pid import pid
 from atag import Atag
 from up_controller import UpController
 
-
-
 tag_distance = 0
 
 RWHEEL = 1
@@ -24,6 +22,14 @@ RFOOT = 7
 RSHOULDER = 8
 RELBOW = 9
 RHAND = 10
+
+DISTANCE_FRONT = 5
+DISTANCE_HEAD = 3
+DISTANCE_RIGHT = 7
+DISTANCE_LEFT = 8
+DISTANCE_BACK = 6
+
+ANGLE = 4
 
 up = uptech.UpTech()
 up_controller = UpController()
@@ -43,11 +49,9 @@ up_controller.set_cds_mode(motor_ids, 1)
 video_width = 640
 video_height = 480
 
-
 def signal_handler():
     stop()
     exit(0)
-
 
 def test():
     while True:
@@ -55,7 +59,6 @@ def test():
         up.CDS_SetAngle(3, 800, 512)
         time.sleep(1)
         up.CDS_SetAngle(3, 200, 512)
-
 
 def reset_to_512():
     up.CDS_SetAngle(3, 512, 256)
@@ -66,7 +69,6 @@ def reset_to_512():
     up.CDS_SetAngle(8, 512, 256)
     up.CDS_SetAngle(9, 512, 256)
     up.CDS_SetAngle(10, 512, 256)
-
 
 def init():
     up.CDS_SetAngle(LFOOT, 552, 384)
@@ -87,131 +89,158 @@ def init():
     up.CDS_SetAngle(RELBOW, 206, 384)
     time.sleep(0.5)
 
-
 def forward(ms=100):
     up.CDS_SetSpeed(RWHEEL, -330)
     up.CDS_SetSpeed(LWHEEL, 340)
     time.sleep(ms / 1000)
-
 
 def boost():
     up.CDS_SetSpeed(RWHEEL, -480)
     up.CDS_SetSpeed(LWHEEL, 520)
     time.sleep(0.3)
 
-
 def boost_back():
     up.CDS_SetSpeed(RWHEEL, 620)
     up.CDS_SetSpeed(LWHEEL, -660)
     time.sleep(0.3)
-
 
 def go_back():
     up.CDS_SetSpeed(RWHEEL, 500)
     up.CDS_SetSpeed(LWHEEL, -520)
     time.sleep(0.4)
 
-
 def turn_left():
     up.CDS_SetSpeed(RWHEEL, -480)
     up.CDS_SetSpeed(LWHEEL, -505)
     time.sleep(0.4)
-
 
 def turn_right():
     up.CDS_SetSpeed(RWHEEL, 480)
     up.CDS_SetSpeed(LWHEEL, 505)
     time.sleep(0.4)
 
-
 def stop():
     up.CDS_SetSpeed(RWHEEL, 0)
     up.CDS_SetSpeed(LWHEEL, 0)
 
-
 def back_1():
-    up.CDS_SetAngle(LELBOW, 818, 512)
-    up.CDS_SetAngle(RELBOW, 818, 512)
-    up.CDS_SetAngle(LHAND, 668, 512)
-    up.CDS_SetAngle(RHAND, 336, 512)
-    up.CDS_SetAngle(LSHOULDER, 512, 512)
-    up.CDS_SetAngle(RSHOULDER, 512, 512)
-
+    up.CDS_SetAngle(LELBOW, 818, 768)
+    up.CDS_SetAngle(RELBOW, 818, 768)
+    up.CDS_SetAngle(LSHOULDER, 512, 768)
+    up.CDS_SetAngle(RSHOULDER, 512, 768)
 
 def back_2():
     up.CDS_SetAngle(LSHOULDER, 206, 768)
     up.CDS_SetAngle(RSHOULDER, 818, 768)
 
-
 def back_3():
-    up.CDS_SetAngle(LELBOW, 450, 768)
-    up.CDS_SetAngle(RELBOW, 450, 768)
-    up.CDS_SetAngle(LFOOT, 770, 768)
-    up.CDS_SetAngle(RFOOT, 770, 768)
-
+    up.CDS_SetAngle(LELBOW, 512, 768)
+    up.CDS_SetAngle(RELBOW, 512, 768)
+    up.CDS_SetAngle(LHAND, 730, 768)
+    up.CDS_SetAngle(RHAND, 294, 768)
 
 def back_4():
-    up.CDS_SetAngle(LHAND, 512, 908)
-    up.CDS_SetAngle(RHAND, 512, 908)
-    up.CDS_SetAngle(LELBOW, 370, 768)
-    up.CDS_SetAngle(RELBOW, 370, 768)
-    up.CDS_SetAngle(LFOOT, 472, 768)
-    up.CDS_SetAngle(RFOOT, 472, 768)
+    up.CDS_SetAngle(LHAND, 512, 768)
+    up.CDS_SetAngle(RHAND, 512, 768)
+    up.CDS_SetAngle(LELBOW, 512, 768)
+    up.CDS_SetAngle(RELBOW, 512, 768)
+    up.CDS_SetAngle(LFOOT, 740, 768)
+    up.CDS_SetAngle(RFOOT, 740, 768)
+    time.sleep(0.4)
+    up.CDS_SetAngle(LHAND, 730, 768)
+    up.CDS_SetAngle(RHAND, 294, 768)
+    up.CDS_SetAngle(LELBOW, 430, 768)
+    up.CDS_SetAngle(RELBOW, 430, 768)
     time.sleep(0.2)
+    up.CDS_SetSpeed(RWHEEL, 480)
+    up.CDS_SetSpeed(LWHEEL, -500)
+    time.sleep(1.0)
+    up.CDS_SetSpeed(RWHEEL, 0)
+    up.CDS_SetSpeed(LWHEEL, 0)
+
+def back_5():
+    up.CDS_SetAngle(LHAND, 512, 768)
+    up.CDS_SetAngle(RHAND, 512, 768)
+    up.CDS_SetAngle(LELBOW, 270, 768)
+    up.CDS_SetAngle(RELBOW, 270, 768)
+    up.CDS_SetAngle(LFOOT, 512, 768)
+    up.CDS_SetAngle(RFOOT, 512, 768)
+    time.sleep(0.4)
+    up.CDS_SetAngle(LELBOW, 206, 768)
+    up.CDS_SetAngle(RELBOW, 206, 768)
+    time.sleep(0.4)
     up.CDS_SetAngle(LSHOULDER, 818, 768)
     up.CDS_SetAngle(RSHOULDER, 206, 768)
-    # up.CDS_SetSpeed(RWHEEL, 350)
-    # up.CDS_SetSpeed(LWHEEL, -370)
-    time.sleep(0.1)
-    up.CDS_SetAngle(LFOOT, 542, 768)
-    up.CDS_SetAngle(RFOOT, 542, 768)
-    up.CDS_SetAngle(LELBOW, 206, 512)
-    up.CDS_SetAngle(RELBOW, 206, 512)
-    time.sleep(0.1)
-    stop()
-
-
-def front_0():
-    pass
-
 
 def front_1():
-    pass
-
+    up.CDS_SetAngle(LSHOULDER, 512, 768)
+    up.CDS_SetAngle(RSHOULDER, 512, 768)
+    time.sleep(0.3)
+    up.CDS_SetAngle(LELBOW, 818, 768)
+    up.CDS_SetAngle(RELBOW, 818, 768)
 
 def front_2():
-    pass
-
+    up.CDS_SetAngle(LSHOULDER, 838, 768)
+    up.CDS_SetAngle(RSHOULDER, 193, 768)
 
 def front_3():
-    pass
-
+    up.CDS_SetAngle(LELBOW, 512, 768)
+    up.CDS_SetAngle(RELBOW, 512, 768)
+    up.CDS_SetAngle(LHAND, 730, 768)
+    up.CDS_SetAngle(RHAND, 294, 768)
 
 def front_4():
-    pass
+    up.CDS_SetAngle(LHAND, 512, 768)
+    up.CDS_SetAngle(RHAND, 512, 768)
+    up.CDS_SetAngle(LELBOW, 512, 768)
+    up.CDS_SetAngle(RELBOW, 512, 768)
+    up.CDS_SetAngle(LFOOT, 284, 768)
+    up.CDS_SetAngle(RFOOT, 284, 768)
+    time.sleep(0.4)
+    up.CDS_SetAngle(LHAND, 730, 768)
+    up.CDS_SetAngle(RHAND, 294, 768)
+    up.CDS_SetAngle(LELBOW, 430, 768)
+    up.CDS_SetAngle(RELBOW, 430, 768)
+    time.sleep(0.2)
+    up.CDS_SetSpeed(RWHEEL, -480)
+    up.CDS_SetSpeed(LWHEEL, 500)
+    time.sleep(1.0)
+    up.CDS_SetSpeed(RWHEEL, 0)
+    up.CDS_SetSpeed(LWHEEL, 0)
 
+def front_5():
+    up.CDS_SetAngle(LHAND, 512, 768)
+    up.CDS_SetAngle(RHAND, 512, 768)
+    up.CDS_SetAngle(LELBOW, 270, 768)
+    up.CDS_SetAngle(RELBOW, 270, 768)
+    up.CDS_SetAngle(LFOOT, 532, 768)
+    up.CDS_SetAngle(RFOOT, 532, 768)
+    time.sleep(0.4)
+    up.CDS_SetAngle(LELBOW, 206, 768)
+    up.CDS_SetAngle(RELBOW, 206, 768)
 
 def front_stand():
-    time.sleep(0.3)
-    front_0()
-    time.sleep(0.4)
     front_1()
-    time.sleep(0.6)
+    time.sleep(0.8)
     front_2()
-    time.sleep(0.6)
-    front_3()
-    time.sleep(0.6)
-    front_4()
     time.sleep(0.4)
+    front_3()
+    time.sleep(0.4)
+    front_4()
+    time.sleep(0.5)
+    front_5()
+    time.sleep(0.6)
 
 def back_stand():
     back_1()
-    time.sleep(0.6)
-    back_2()
     time.sleep(0.8)
+    back_2()
+    time.sleep(0.4)
     back_3()
-    time.sleep(0.9)
+    time.sleep(0.4)
     back_4()
+    time.sleep(0.5)
+    back_5()
     time.sleep(0.6)
 
 def hit_left():
@@ -405,8 +434,7 @@ def attack_back():
     stop()
 
 
-def autopilot(flag_halt):
-    up_controller = UpController()
+def autopilot(flag_stop_autopilot,datas):
     time.sleep(2)
     up.CDS_SetSpeed(RWHEEL, -430)
     up.CDS_SetSpeed(LWHEEL, 490)
@@ -416,10 +444,12 @@ def autopilot(flag_halt):
     up.CDS_SetAngle(LFOOT, 532, 512)
     up.CDS_SetAngle(RFOOT, 532, 512)
     while True:
-        if flag_halt.value == 1:
+        if flag_stop_autopilot.value == 1:
+            time.sleep(0.1)
             continue
-        iodata = up_controller.io_data
         auto_pilot_index = 0
+        iodata = datas[0]
+        adcdata = datas[1]
         if iodata[0] == 1:
             auto_pilot_index += 1
         if iodata[1] == 1:
@@ -429,7 +459,8 @@ def autopilot(flag_halt):
         if iodata[3] == 1:
             auto_pilot_index += 8
 
-        print(iodata)
+        print(iodata,adcdata)
+        continue
 
         if auto_pilot_index == 0:
             up.CDS_SetSpeed(RWHEEL, -330)
@@ -473,23 +504,24 @@ def autopilot(flag_halt):
             pass
 
 
-def detect_tag(image, flag_halt):
+def detect_tag(image, flag_stop_autopilot):
     pid_output = 0
     tag_distance = 0
-    results = atag.detect(image.value)
+    gray = cv2.cvtColor(image.value, cv2.COLOR_BGR2GRAY)
+    results = atag.detect(gray)
     if len(results) == 0:
         print("not detected")
-        flag_halt.value = 0
+        flag_stop_autopilot.value = 0
         return None
     # 确认标签ID
     tag_id = atag.get_id(results)
     if tag_id != 0:
-        flag_halt.value = 0
+        flag_stop_autopilot.value = 0
         return None
     # 使用标签实际大小判断距离
     tag_distance = atag.get_distance(results[0].homography, 4300)
     print("id:" + str(tag_id) + " distance:" + str(tag_distance), end="")
-    flag_halt.value = 1
+    flag_stop_autopilot.value = 1
     if tag_distance < 65:
         print("push")
         push_tag()
@@ -538,25 +570,25 @@ def push_tag():
     turn_left()
     forward(1000)
 
-def videocap(image):
+def videocap(image, flag_video_ok):
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, video_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, video_height)
+    flag_video_ok.value, image.value = cap.read()
     while True:
-        _, frame = cap.read()
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        image.value = gray
+        _, image.value = cap.read()
         
+def dataget(datas):
+    up_controller = UpController()
+    while True:
+        datas[0] = up_controller.io_data
+        datas[1] = up_controller.adc_data
 
-def main(image,flag_halt,hit):
+def main(image,flag_stop_autopilot,hit):
     # init()
     stop()
     signal.signal(signal.SIGINT, signal_handler)
     while True:
-        # _, image = cap.read()
-        # detect_tag(image, flag_halt)
-        # up.CDS_SetAngle(LFOOT, 552, 256)
-        # up.CDS_SetAngle(RFOOT, 552, 256)
         # if hit.value == 1:
         #     hit_3_L()
         # elif hit.value == 2:
@@ -573,24 +605,27 @@ def main(image,flag_halt,hit):
 
 if __name__ == '__main__':
     image = multiprocessing.Manager().Value(cv2.CV_8UC3, None)
-    flag_halt = multiprocessing.Manager().Value('i',0)
+    flag_stop_autopilot = multiprocessing.Manager().Value('i',0)
+    flag_video_ok = multiprocessing.Manager().Value('i',0)
     hit = multiprocessing.Manager().Value('i',0)
-    process1 = multiprocessing.Process(target=videocap, args=(image,))
-    process1.start()
-    time.sleep(3)
-    process2 = multiprocessing.Process(target=main, args=(image,flag_halt,hit,))
-    process2.start()
-    process3 = multiprocessing.Process(target=autopilot, args=(flag_halt,))
-    # process3.start()
-    while True:
-        if sys.stdin.read(1) == 'a':
-            hit.value = 1
-        if sys.stdin.read(1) == 'd':
-            hit.value = 2
-        if sys.stdin.read(1) == 'w':
-            hit.value = 3
-        if sys.stdin.read(1) == 's':
-            hit.value = 4
-    process1.join()
-    process2.join()
-    process3.join()
+    datas = multiprocessing.Manager().list([[],[]])
+    videocap_proc = multiprocessing.Process(target=videocap, args=(image, flag_video_ok,))
+    videocap_proc.start()
+    print("videocap start")
+    print("wait for video ok")
+    while flag_video_ok.value == 0:
+        time.sleep(0.2)
+    print("video ok")
+    dataget_proc = multiprocessing.Process(target=dataget, args=(datas,))
+    main_proc = multiprocessing.Process(target=main, args=(image,flag_stop_autopilot,hit,))
+    autopilot_proc = multiprocessing.Process(target=autopilot, args=(flag_stop_autopilot,datas,))
+    main_proc.start()
+    print("main start")
+    dataget_proc.start()
+    print("dataget start")
+    # autopilot_proc.start()
+    # print("autopilot start")
+    videocap_proc.join()
+    main_proc.join()
+    autopilot_proc.join()
+    dataget_proc.join()
