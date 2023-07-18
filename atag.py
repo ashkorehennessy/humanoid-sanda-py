@@ -14,10 +14,6 @@ class Atag:
         result = results[0]
         return result.tag_id
 
-    def get_center(self, results):
-        result = results[0]
-        return np.array(result.center).astype(int)
-
     def get_distance(self, H, t):
         """
         :param H: homography matrix
