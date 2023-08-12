@@ -6,7 +6,7 @@ def robot_detect(image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # 设定颜色范围（在HSV颜色空间中）
-    lower_orange = np.array([14, 150, 150])  # 橙色的最低HSV值
+    lower_orange = np.array([14, 65, 190])  # 橙色的最低HSV值
     upper_orange = np.array([35, 255, 255])  # 橙色的最高HSV值
 
     orange_mask = cv2.inRange(hsv_image, lower_orange, upper_orange)

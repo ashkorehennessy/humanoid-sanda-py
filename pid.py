@@ -1,7 +1,7 @@
 class pid:
     def __init__(self):
         self.Kp = 0.3
-        self.Kd = 0
+        self.Kd = 0.05
         self.last_error = 0
         self.output_max = 100
         self.output_min = -100
