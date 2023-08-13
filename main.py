@@ -14,6 +14,7 @@ from pid import pid
 from atag import Atag
 from up_controller import UpController
 tag_distance = 0
+tag_counter = 3
 
 RWHEEL = 1
 LWHEEL = 2
@@ -123,23 +124,23 @@ def go_back():
     time.sleep(0.4)
 
 def turn_left():
-    up.CDS_SetSpeed(RWHEEL, -413)
-    up.CDS_SetSpeed(LWHEEL, -393)
+    up.CDS_SetSpeed(RWHEEL, -400)
+    up.CDS_SetSpeed(LWHEEL, -380)
     time.sleep(0.4)
 
 def turn_right():
-    up.CDS_SetSpeed(RWHEEL, 393)
-    up.CDS_SetSpeed(LWHEEL, 413)
+    up.CDS_SetSpeed(RWHEEL, 388)
+    up.CDS_SetSpeed(LWHEEL, 408)
     time.sleep(0.4)
 
 def turn_left_back():
-    up.CDS_SetSpeed(RWHEEL, -120)
-    up.CDS_SetSpeed(LWHEEL, -550)
+    up.CDS_SetSpeed(RWHEEL, -160)
+    up.CDS_SetSpeed(LWHEEL, -390)
     time.sleep(0.4)
 
 def turn_right_back():
-    up.CDS_SetSpeed(RWHEEL, 550)
-    up.CDS_SetSpeed(LWHEEL, 120)
+    up.CDS_SetSpeed(RWHEEL, 390)
+    up.CDS_SetSpeed(LWHEEL, 160)
     time.sleep(0.4)
 
 def stop():
@@ -313,7 +314,6 @@ def hit_3_L():
     up.CDS_SetAngle(LELBOW, 425, 968)
     # 伸肘
     up.CDS_SetAngle(LHAND, 622, 968)
-    time.sleep(0.1)
     # 摆臂
     up.CDS_SetAngle(LSHOULDER, 328, 912)
     time.sleep(0.5)
@@ -343,7 +343,6 @@ def hit_3_R():
     up.CDS_SetAngle(RELBOW, 425, 968)
     # 伸肘
     up.CDS_SetAngle(RHAND, 382, 968)
-    time.sleep(0.1)
     # 摆臂
     up.CDS_SetAngle(RSHOULDER, 696, 912)
     time.sleep(0.5)
@@ -517,35 +516,42 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
             print("index:",auto_pilot_index)
         if auto_pilot_index == 1:
             flag_turning.value = 1
-            if flag_attack.value == 1:
+            if up.CDS_GetCurPos(LFOOT) > 515:
                 turn_right_back()
+                turn_right()
                 turn_right()
                 slow(500)
                 forward(500)
             else:
                 stop()
             flag_turning.value = 0
+            continue
         elif auto_pilot_index == 4:
             flag_turning.value = 1
-            if flag_attack.value == 1:
+            if up.CDS_GetCurPos(LFOOT) > 515:
                 turn_left_back()
+                turn_left()
                 turn_left()
                 forward(500)
             else:
                 stop()
             flag_turning.value = 0
+            continue
         elif auto_pilot_index == 5:
             flag_turning.value = 1
-            if flag_attack.value == 1:
+            if up.CDS_GetCurPos(LFOOT) > 515:
                 turn_left_back()
+                turn_left()
+                turn_left()
                 turn_left()
                 forward(500)
             else:
                 stop()
             flag_turning.value = 0
+            continue
         else:
             if flag_tracking.value == 0:
-                if flag_attack == 1:
+                if up.CDS_GetCurPos(LFOOT) < 515:
                     up.CDS_SetSpeed(RWHEEL, -290)
                     up.CDS_SetSpeed(LWHEEL, 300)
                 else:
@@ -555,37 +561,44 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
         gray = cv2.cvtColor(image.value, cv2.COLOR_BGR2GRAY)
         turn = edge_detect(gray)
         if turn != 0:
-            if flag_attack.value == 1:
+            if up.CDS_GetCurPos(LFOOT) < 530 and flag_attack.value == 1:
                 stop()
             else:
-                flag_turning.value = 1
-                if turn == 1:
-                    turn_left_back()
-                    turn_left_back()
-                    slow(500)
-                    forward(1000)
-                elif turn == 2:
-                    turn_left_back()
-                    turn_left_back()
-                    slow(500)
-                    forward(500)
-                elif turn == 3:
-                    turn_right_back()
-                    turn_right_back()
-                    slow(500)
-                    forward(500)
-                elif turn == 4:
-                    turn_left()
-                    turn_left()
-                    forward(500)
-                elif turn == 5:
-                    turn_right()
-                    turn_right()
-                    forward(500)
-                flag_turning.value = 0
+                if flag_stop_autopilot.value == 0:
+                    flag_turning.value = 1
+                    if turn == 1:
+                        turn_left()
+                        turn_left()
+                        turn_left()
+                        slow(500)
+                        forward(1000)
+                    elif turn == 2:
+                        turn_left()
+                        turn_left()
+                        turn_left()
+                        slow(500)
+                        forward(1000)
+                    elif turn == 3:
+                        turn_right()
+                        turn_right()
+                        turn_right()
+                        slow(500)
+                        forward(1000)
+                    elif turn == 4:
+                        turn_left()
+                        turn_left()
+                        turn_left()
+                        forward(1000)
+                    elif turn == 5:
+                        turn_right()
+                        turn_right()
+                        turn_right()
+                        forward(1000)
+                    flag_turning.value = 0
 
 
 def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_turning):
+    global tag_counter
     while True:
         pid_output = 0
         tag_distance = 0
@@ -600,18 +613,22 @@ def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_tu
                     up.CDS_SetSpeed(RWHEEL, -speed+10 - pid_output)
                     up.CDS_SetSpeed(LWHEEL, speed - pid_output)
                 print("robot x:" + str(robot_x) + " pid_output:" + str(pid_output))
-                continue
+                
         flag_tracking.value = 0
         gray = cv2.cvtColor(image.value, cv2.COLOR_BGR2GRAY)
         results = atag.detect(gray)
         results_len = len(results)
         if results_len == 0:
-            flag_stop_autopilot.value = 0
+            tag_counter -= 1
+            if tag_counter < 1:
+                flag_stop_autopilot.value = 0
             continue
         # 确认标签ID
         tag_id = atag.get_id(results)
         if tag_id != 0:
-            flag_stop_autopilot.value = 0
+            tag_counter = 0
+            if tag_counter < 1:
+                flag_stop_autopilot.value = 0
             continue
         # 判断距离，获取距离最近的标签的下标
         index = 0
@@ -623,6 +640,7 @@ def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_tu
         tag_distance = atag.get_distance(results[index].homography, 4300)
         print("id:" + str(tag_id) + " distance:" + str(tag_distance), end="")
         flag_stop_autopilot.value = 1
+        tag_counter = 3
         if tag_distance < 100:
             speed = 300
             release()
