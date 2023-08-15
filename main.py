@@ -47,9 +47,6 @@ pid = pid()
 up.ADC_IO_Open()
 # up.ADC_Led_SetColor(0, 0x07E0)
 # up.ADC_Led_SetColor(1, 0x07E0)
-up.LCD_Open(2)
-up.LCD_PutString(10, 0, '666')
-up.LCD_Refresh()
 up.CDS_Open()
 servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
 motor_ids = [RWHEEL, LWHEEL]
@@ -295,26 +292,40 @@ def hit_1():
     forward(500)
 
 def hit_2():
-    up.CDS_SetAngle(LSHOULDER, 880, 712)
-    up.CDS_SetAngle(RSHOULDER, 144, 712)
     # 前倾
-    up.CDS_SetAngle(LFOOT, 500, 512)
-    up.CDS_SetAngle(RFOOT, 500, 512)
-    time.sleep(0.2)
+    up.CDS_SetAngle(LFOOT, 520, 512)
+    up.CDS_SetAngle(RFOOT, 520, 512)
+
+    # 左手
+    up.CDS_SetAngle(LSHOULDER, 880, 712)
     # 伸手
     up.CDS_SetAngle(LELBOW, 425, 968)
-    up.CDS_SetAngle(RELBOW, 425, 968)
     # 伸肘
     up.CDS_SetAngle(LHAND, 592, 968)
+    time.sleep(0.6)
+    # 复位
+    up.CDS_SetAngle(LELBOW, 76, 512)
+    up.CDS_SetAngle(RELBOW, 76, 512)
+    up.CDS_SetAngle(LHAND, 958, 512)
+    up.CDS_SetAngle(RHAND, 66, 512)
+    up.CDS_SetAngle(LSHOULDER, 838, 712)
+    up.CDS_SetAngle(RSHOULDER, 186, 712)
+    time.sleep(0.4)
+
+    # 右手
+    up.CDS_SetAngle(RSHOULDER, 144, 712)
+    # 伸手
+    up.CDS_SetAngle(RELBOW, 425, 968)
+    # 伸肘
     up.CDS_SetAngle(RHAND, 432, 968)
-    time.sleep(0.5)
+    time.sleep(0.6)
     alert()
-    time.sleep(0.3)
+    time.sleep(0.5)
 
 def hit_3_L():
     # 前倾
-    up.CDS_SetAngle(LFOOT, 525, 512)
-    up.CDS_SetAngle(RFOOT, 525, 512)
+    up.CDS_SetAngle(LFOOT, 530, 512)
+    up.CDS_SetAngle(RFOOT, 530, 512)
     # 伸手
     up.CDS_SetAngle(LELBOW, 425, 968)
     # 伸肘
@@ -348,8 +359,8 @@ def hit_3_LF():
 
 def hit_3_R():
     # 前倾
-    up.CDS_SetAngle(LFOOT, 525, 512)
-    up.CDS_SetAngle(RFOOT, 525, 512)
+    up.CDS_SetAngle(LFOOT, 530, 512)
+    up.CDS_SetAngle(RFOOT, 530, 512)
     # 伸手
     up.CDS_SetAngle(RELBOW, 425, 968)
     # 伸肘
@@ -419,7 +430,7 @@ def release():
     up.CDS_SetAngle(LHAND, 512, 512)
     up.CDS_SetAngle(RHAND, 512, 512)
 
-def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag_tracking,flag_turning,image):
+def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag_tracking,flag_turning,image,tracking_counter):
     global flag_stand
     global turning_counter
     while True:
@@ -524,11 +535,11 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
 
         if iodata[0] == 1:
             auto_pilot_index += 1
-        if iodata[3] == 1:
+        if iodata[1] == 1:
             auto_pilot_index += 4
 
         if auto_pilot_index != 0:
-            print("index:",auto_pilot_index)
+            print(f"index:{auto_pilot_index} iodata:{iodata} adcdata{adcdata}")
         if auto_pilot_index == 1:
             flag_turning.value = 1
             turning_counter = 3
@@ -616,7 +627,7 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
             flag_turning.value = 0
 
 
-def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_turning):
+def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_turning, tracking_counter):
     global tag_counter
     while True:
         pid_output = 0
@@ -626,6 +637,7 @@ def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_tu
             robot_x = robot_detect(image.value)
             if not robot_x is None:
                 flag_tracking.value = 1
+                tracking_counter.value = 3
                 input_value = robot_x - video_width / 2
                 pid_output = pid.update(input_value, 0)
                 if flag_turning.value == 0:
@@ -633,7 +645,9 @@ def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_tu
                     up.CDS_SetSpeed(LWHEEL, speed - pid_output)
                 print("robot x:" + str(robot_x) + " pid_output:" + str(pid_output))
             else:
-                flag_tracking.value = 0
+                tracking_counter.value -= 1
+                if tracking_counter.value < 1:
+                    flag_tracking.value = 0
         gray = cv2.cvtColor(image.value, cv2.COLOR_BGR2GRAY)
         results = atag.detect(gray)
         results_len = len(results)
@@ -746,15 +760,18 @@ def videocap(image, flag_video_ok):
 def dataget(datas):
     up_controller = UpController()
     while True:
-        time.sleep(0.1)
+        time.sleep(0.05)
         datas[0] = up_controller.io_data
         datas[1] = up_controller.adc_data
         if len(datas[0]) != 8:
             datas[0] = [0,0,0,0,1,1,0,0]
-        if len(datas[1]) != 9:
+        if len(datas[1]) != 10:
             datas[1] = [0,0,0,0,2000,0,0,0,0,0]
 
-def main(flag_stop_autopilot,datas,flag_attack,stand_event):
+def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,tracking_counter):
+    # reset_to_512()
+    # time.sleep(2)
+    # exit(0)
     global attack_counter
     release()
     while not start_event.is_set():
@@ -788,10 +805,12 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event):
             if flag_stop_autopilot.value == 1:
                 time.sleep(0.2)
                 continue
-            if (adcdata[DISTANCE_FRONT] > 350 or adcdata[DISTANCE_HEAD] > 350) and flag_turning == 0:
+            if (adcdata[DISTANCE_FRONT] > 350 or adcdata[DISTANCE_HEAD] > 350) and flag_turning.value == 0:
                 print("front hit")
                 flag_attack.value = 1
                 attack_counter = 3
+                flag_tracking.value = 1
+                tracking_counter.value = 3
                 hit_2()
                 print(iodata,adcdata)
                 print("front:" + str(adcdata[DISTANCE_FRONT]) + 
@@ -799,25 +818,15 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event):
                     " left:" + str(adcdata[DISTANCE_LEFT]) + 
                     " right:" + str(adcdata[DISTANCE_RIGHT]) + 
                     " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value))
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
                 continue
             if adcdata[DISTANCE_LEFT] > 350:
                 print("left hit")
                 flag_attack.value = 1
                 attack_counter = 3
-                hit_3_L()
-                print(datas[0],datas[1])
-                print("front:" + str(adcdata[DISTANCE_FRONT]) + 
-                    " head:" + str(adcdata[DISTANCE_HEAD]) + 
-                    " left:" + str(adcdata[DISTANCE_LEFT]) + 
-                    " right:" + str(adcdata[DISTANCE_RIGHT]) + 
-                    " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value))
-                continue
-            if adcdata[DISTANCE_BACK] > 350:
-                print("back hit")
-                flag_attack.value = 1
-                attack_counter = 3
+                flag_tracking.value = 1
+                tracking_counter.value = 3
                 up.CDS_SetSpeed(RWHEEL, -390)
                 up.CDS_SetSpeed(LWHEEL, -370)
                 hit_3_L()
@@ -829,25 +838,54 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event):
                     " left:" + str(adcdata[DISTANCE_LEFT]) + 
                     " right:" + str(adcdata[DISTANCE_RIGHT]) + 
                     " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value))
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
                 continue
-            if adcdata[DISTANCE_RIGHT] > 350:
-                print("right hit")
+            if adcdata[DISTANCE_BACK] > 350:
+                print("back hit")
                 flag_attack.value = 1
                 attack_counter = 3
-                hit_3_R()
+                flag_tracking.value = 1
+                tracking_counter.value = 3
+                up.CDS_SetSpeed(RWHEEL, -390)
+                up.CDS_SetSpeed(LWHEEL, -370)
+                hit_3_L()
+                up.CDS_SetSpeed(RWHEEL, 0)
+                up.CDS_SetSpeed(LWHEEL, 0)
                 print(datas[0],datas[1])
                 print("front:" + str(adcdata[DISTANCE_FRONT]) + 
                     " head:" + str(adcdata[DISTANCE_HEAD]) + 
                     " left:" + str(adcdata[DISTANCE_LEFT]) + 
                     " right:" + str(adcdata[DISTANCE_RIGHT]) + 
                     " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value))
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
                 continue
+            if adcdata[DISTANCE_RIGHT] > 350:
+                print("right hit")
+                flag_attack.value = 1
+                attack_counter = 3
+                flag_tracking.value = 1
+                tracking_counter.value = 3
+                up.CDS_SetSpeed(RWHEEL, -390)
+                up.CDS_SetSpeed(LWHEEL, -370)
+                hit_3_R()
+                up.CDS_SetSpeed(RWHEEL, 0)
+                up.CDS_SetSpeed(LWHEEL, 0)
+                print(datas[0],datas[1])
+                print("front:" + str(adcdata[DISTANCE_FRONT]) + 
+                    " head:" + str(adcdata[DISTANCE_HEAD]) + 
+                    " left:" + str(adcdata[DISTANCE_LEFT]) + 
+                    " right:" + str(adcdata[DISTANCE_RIGHT]) + 
+                    " attack:" + str(flag_attack.value) + 
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
             if iodata[DISTANCE_RF] == 0:
                 print("right front hit")
                 flag_attack.value = 1
                 attack_counter = 3
+                flag_tracking.value = 1
+                tracking_counter.value = 3
                 hit_3_RF()
                 print(datas[0],datas[1])
                 print("front:" + str(adcdata[DISTANCE_FRONT]) + 
@@ -855,12 +893,15 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event):
                     " left:" + str(adcdata[DISTANCE_LEFT]) + 
                     " right:" + str(adcdata[DISTANCE_RIGHT]) + 
                     " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value))
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
                 continue
             if iodata[DISTANCE_LF] == 0:
                 print("left front hit")
                 flag_attack.value = 1
                 attack_counter = 3
+                flag_tracking.value = 1
+                tracking_counter.value = 3
                 hit_3_LF()
                 print(datas[0],datas[1])
                 print("front:" + str(adcdata[DISTANCE_FRONT]) + 
@@ -868,11 +909,15 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event):
                     " left:" + str(adcdata[DISTANCE_LEFT]) + 
                     " right:" + str(adcdata[DISTANCE_RIGHT]) + 
                     " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value))
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
                 continue
             attack_counter -= 1
             if attack_counter < 1:
                 flag_attack.value = 0
+            tracking_counter.value -= 1
+            if tracking_counter.value < 1:
+                flag_tracking.value = 0
         
 
 if __name__ == '__main__':
@@ -887,19 +932,13 @@ if __name__ == '__main__':
     flag_tracking = multiprocessing.Manager().Value('i',0)
     flag_turning = multiprocessing.Manager().Value('i',0)
     hit = multiprocessing.Manager().Value('i',0)
+    tracking_counter = multiprocessing.Manager().Value('i',0)
     datas = multiprocessing.Manager().list([[],[]])
     videocap_proc = multiprocessing.Process(target=videocap, args=(image, flag_video_ok,))
-    videocap_proc.start()
-    print("videocap start")
-    print("wait for video ok")
-    while flag_video_ok.value == 0:
-        time.sleep(0.2)
-    print("video ok")
     dataget_proc = multiprocessing.Process(target=dataget, args=(datas,))
-    main_proc = multiprocessing.Process(target=main, args=(flag_stop_autopilot,datas,flag_attack,stand_event,))
-    autopilot_proc = multiprocessing.Process(target=autopilot, args=(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag_tracking,flag_turning,image,))
-    detect_tag_proc = multiprocessing.Process(target=detect_tag, args=(image,flag_stop_autopilot,flag_video_ok,flag_tracking,flag_turning,))
-    time.sleep(1)
+    main_proc = multiprocessing.Process(target=main, args=(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,tracking_counter,))
+    autopilot_proc = multiprocessing.Process(target=autopilot, args=(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag_tracking,flag_turning,image,tracking_counter,))
+    detect_tag_proc = multiprocessing.Process(target=detect_tag, args=(image,flag_stop_autopilot,flag_video_ok,flag_tracking,flag_turning,tracking_counter))
     dataget_proc.start()
     print("dataget start")
     time.sleep(1)
@@ -907,7 +946,12 @@ if __name__ == '__main__':
     print("main start")
     while not start_event.is_set():
         pass
-    time.sleep(2.0)
+    videocap_proc.start()
+    print("videocap start")
+    print("wait for video ok")
+    while flag_video_ok.value == 0:
+        time.sleep(0.2)
+    print("video ok")
     detect_tag_proc.start()
     print("detect_tag start")
     time.sleep(2.0)

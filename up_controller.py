@@ -26,7 +26,6 @@ class UpController:
 
     def __init__(self):
         self.up=uptech.UpTech()
-        self.up.LCD_Open(2)
         open_flag = self.up.ADC_IO_Open()
         print("ad_io_open = {}".format(open_flag))
         self.up.CDS_Open()
@@ -44,7 +43,6 @@ class UpController:
         edge_thread = threading.Thread(name = "edge_detect_thread",target=self.edge_detect_thread)
         edge_thread.setDaemon(True)
         edge_thread.start()
-        time.sleep(1)
 
     def edge_detect_thread(self):
         while True:
