@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import uptech
 import time
-import signal
-import cv2
-import multiprocessing
-import numpy as np
-import sys
 import subprocess
-from robot_detect import robot_detect
-from edge_detect import edge_detect
+import multiprocessing
 from pid import pid
-from atag import Atag
 from up_controller import UpController
+import apriltag
 tag_distance = 0
 tag_counter = 3
 attack_counter = 0
 turning_counter = 0
+front_hit_counter = 0
 
 RWHEEL = 1
 LWHEEL = 2
@@ -40,21 +34,166 @@ DISTANCE_RF = 5
 
 ANGLE = 4
 
-up = uptech.UpTech()
 up_controller = UpController()
-atag = Atag()
 pid = pid()
-up.ADC_IO_Open()
-# up.ADC_Led_SetColor(0, 0x07E0)
-# up.ADC_Led_SetColor(1, 0x07E0)
-up.CDS_Open()
-servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
-motor_ids = [RWHEEL, LWHEEL]
-up_controller.set_cds_mode(servo_ids, 0)
-up_controller.set_cds_mode(motor_ids, 1)
 flag_stand = 0
 video_width = 640
 video_height = 480
+print("head init finished")
+
+
+class Atag:
+    def __init__(self):
+        self.options = apriltag.DetectorOptions(families="tag36h11")
+        self.detector = apriltag.Detector(self.options)
+
+    def detect(self, gray):
+        return self.detector.detect(gray)
+
+    def get_distance(self, H, t):
+        """
+        :param H: homography matrix
+        :param t: ???
+        :return: distance
+        """
+        ss = 0.5
+        src = np.array([[-ss, -ss, 0],
+                        [ss, -ss, 0],
+                        [ss, ss, 0],
+                        [-ss, ss, 0]])
+        Kmat = np.array([[700, 0, 0],
+                         [0, 700, 0],
+                         [0, 0, 1]]) * 1.0
+        disCoeffs = np.zeros([4, 1]) * 1.0
+        ipoints = np.array([[-1, -1],
+                            [1, -1],
+                            [1, 1],
+                            [-1, 1]])
+        for point in ipoints:
+            x = point[0]
+            y = point[1]
+            z = H[2, 0] * x + H[2, 1] * y + H[2, 2]
+            point[0] = (H[0, 0] * x + H[0, 1] * y + H[0, 2]) / z * 1.0
+            point[1] = (H[1, 0] * x + H[1, 1] * y + H[1, 2]) / z * 1.0
+        campoint = ipoints * 1.0
+        opoints = np.array([[-1.0, -1.0, 0.0],
+                            [1.0, -1.0, 0.0],
+                            [1.0, 1.0, 0.0],
+                            [-1.0, 1.0, 0.0]])
+        opoints = opoints * 0.5
+        rate, rvec, tvec = cv2.solvePnP(opoints, campoint, Kmat, disCoeffs)
+        point, jac = cv2.projectPoints(src, np.zeros(rvec.shape), tvec, Kmat, disCoeffs)
+        points = np.int32(np.reshape(point, [4, 2]))
+        distance = np.abs(t / np.linalg.norm(points[0] - points[1]))
+        return distance
+
+def edge_detect(gray):
+    width = 640
+    height = 200
+    frame = gray[150: 350, :]
+    ret, frame = cv2.threshold(frame, 135, 1, cv2.THRESH_BINARY)
+    left_white_pixel = np.sum(frame[:, :width // 2])
+    right_white_pixel = np.sum(frame[:, width // 2:])
+    up_white_pixel = np.sum(frame[:height // 2, :])
+    down_white_pixel = np.sum(frame[height // 2:, :])
+    diff = int(left_white_pixel) - right_white_pixel
+    # 拐角处特征
+    if up_white_pixel < 32000:
+        print("diff" + str(diff) + "white:" + str(up_white_pixel) + "拐角")
+        return 1
+    # 直向边缘处特征
+    elif up_white_pixel < 38000:
+        if diff > 0: 
+            print("diff:" + str(diff) + "white:" + str(up_white_pixel) + "直向边缘，左转")
+            return 2
+        else:
+            print("diff:" + str(diff) + "white:" + str(up_white_pixel) + "直向边缘，右转")
+            return 3
+    # 侧向边缘处特征
+    elif up_white_pixel < 49000:
+        if diff > 0: 
+            print("diff:" + str(diff) + "white:" + str(up_white_pixel) + "侧向边缘，左转")
+            return 4
+        else:
+            print("diff:" + str(diff) + "white:" + str(up_white_pixel) + "侧向边缘，右转")
+            return 5
+    else:
+        return 0
+
+
+def robot_detect(image):
+    # 转换颜色空间
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    # 设定颜色范围（在HSV颜色空间中）
+    lower_orange = np.array([14, 65, 190])  # 橙色的最低HSV值
+    upper_orange = np.array([35, 255, 255])  # 橙色的最高HSV值
+
+    orange_mask = cv2.inRange(hsv_image, lower_orange, upper_orange)
+
+    # 查找橙色连接件的轮廓
+    contours, _ = cv2.findContours(orange_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # 计算每个轮廓的外接矩形和中心点
+    bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
+    center_points = [(box[0] + box[2] // 2, box[1] + box[3] // 2) for box in bounding_boxes]
+
+    # 检查是否有轮廓
+    if len(center_points) == 0:
+        return None
+
+    # 第一次筛选
+    # 计算所有中心点的平均坐标
+    avg_x = sum(point[0] for point in center_points) // len(center_points)
+    avg_y = sum(point[1] for point in center_points) // len(center_points)
+
+    # 筛选掉距离平均坐标较远的
+    filtered_bounding_boxes = []
+    filtered_center_points = []
+    distance_threshold = 100
+
+    for box, center in zip(bounding_boxes, center_points):
+        distance = np.sqrt((center[0] - avg_x) ** 2 + (center[1] - avg_y) ** 2)
+        if distance <= distance_threshold:
+            filtered_bounding_boxes.append(box)
+            filtered_center_points.append(center)
+
+    if len(filtered_center_points) == 0:
+        return None
+
+    # 第二次筛选
+    # 计算第一次筛选的中心点的平均坐标
+    avg_x = sum(point[0] for point in filtered_center_points) // len(filtered_center_points)
+    avg_y = sum(point[1] for point in filtered_center_points) // len(filtered_center_points)
+
+    # 筛选掉距离平均坐标较远的小球
+    filtered_bounding_boxes = []
+    filtered_center_points = []
+
+    distance_threshold = 150
+    for box, center in zip(bounding_boxes, center_points):
+        distance = np.sqrt((center[0] - avg_x) ** 2 + (center[1] - avg_y) ** 2)
+        if distance <= distance_threshold:
+            filtered_bounding_boxes.append(box)
+            filtered_center_points.append(center)
+
+    # 计算大矩形的位置
+    if len(filtered_bounding_boxes) > 0:
+        x_min = min(box[0] for box in filtered_bounding_boxes)
+        y_min = min(box[1] for box in filtered_bounding_boxes)
+        x_max = max(box[0] + box[2] for box in filtered_bounding_boxes)
+        y_max = max(box[1] + box[3] for box in filtered_bounding_boxes)
+
+        area = (x_max - x_min) * (y_max - y_min)
+
+        print("area:", area, end="")
+
+        if 3000 < area < 100000:
+            return (x_min + x_max) // 2
+        else:
+            return None
+    else:
+        return None
 
 def signal_handler(signal, frame):
     stop()
@@ -123,13 +262,13 @@ def go_back():
     time.sleep(0.4)
 
 def turn_left():
-    up.CDS_SetSpeed(RWHEEL, -390)
-    up.CDS_SetSpeed(LWHEEL, -370)
+    up.CDS_SetSpeed(RWHEEL, -370)  # 亏电390，满电370
+    up.CDS_SetSpeed(LWHEEL, -350)  # 亏电370，满电350
     time.sleep(0.4)
 
 def turn_right():
-    up.CDS_SetSpeed(RWHEEL, 370)
-    up.CDS_SetSpeed(LWHEEL, 390)
+    up.CDS_SetSpeed(RWHEEL, 350)  # 亏电370，满电350
+    up.CDS_SetSpeed(LWHEEL, 370)  # 亏电390，满电370
     time.sleep(0.4)
 
 def turn_left_back():
@@ -233,65 +372,10 @@ def front_5():
     time.sleep(0.4)
     up.CDS_SetAngle(LELBOW, 206, 768)
     up.CDS_SetAngle(RELBOW, 206, 768)
-
-def hit_left():
-    up.CDS_SetAngle(LFOOT, 462, 650)
-    up.CDS_SetAngle(RFOOT, 462, 650)
-    up.CDS_SetAngle(LELBOW, 630, 968)
-    up.CDS_SetAngle(LHAND, 580, 968)
-    up.CDS_SetSpeed(RWHEEL, -580)
-    up.CDS_SetSpeed(LWHEEL, -605)
-    time.sleep(0.8)
-    up.CDS_SetAngle(LELBOW, 680, 612)
-    up.CDS_SetAngle(LHAND, 630, 612)
-
-def hit_right():
-    up.CDS_SetAngle(LFOOT, 462, 650)
-    up.CDS_SetAngle(RFOOT, 462, 650)
-    up.CDS_SetAngle(RELBOW, 430, 968)
-    up.CDS_SetAngle(RHAND, 470, 968)
-    up.CDS_SetSpeed(RWHEEL, 580)
-    up.CDS_SetSpeed(LWHEEL, 605)
-
-    time.sleep(0.8)
-    up.CDS_SetAngle(RELBOW, 740, 612)
-    up.CDS_SetAngle(RHAND, 780, 612)
-
-def hit_1():
-    up.CDS_SetAngle(LFOOT, 522, 256)
-    up.CDS_SetAngle(RFOOT, 522, 256)
-    up.CDS_SetAngle(LELBOW, 230, 512)
-    up.CDS_SetAngle(RELBOW, 280, 512)
-    up.CDS_SetAngle(LSHOULDER, 908, 512)
-    up.CDS_SetAngle(RSHOULDER, 116, 512)
-    time.sleep(0.1)
-    up.CDS_SetAngle(LHAND, 818, 512)
-    up.CDS_SetAngle(RHAND, 206, 512)
-    time.sleep(0.4)
-    up.CDS_SetAngle(LELBOW, 450, 512)
-    up.CDS_SetAngle(RELBOW, 480, 512)
-    time.sleep(0.5)
-    up.CDS_SetAngle(LHAND, 512, 512)
-    up.CDS_SetAngle(RHAND, 512, 512)
-    time.sleep(0.6)
-    up.CDS_SetAngle(LSHOULDER, 700, 768)
-    up.CDS_SetAngle(RSHOULDER, 312, 768)
-    time.sleep(0.6)
-    up.CDS_SetAngle(LSHOULDER, 808, 256)
-    up.CDS_SetAngle(RSHOULDER, 216, 256)
-    up.CDS_SetAngle(LELBOW, 206, 256)
-    up.CDS_SetAngle(RELBOW, 206, 256)
-    up.CDS_SetAngle(LFOOT, 532, 256)
-    up.CDS_SetAngle(RFOOT, 532, 256)
-    time.sleep(0.5)
-    go_back()
-    time.sleep(0.5)
-    turn_left()
-    turn_left()
-    slow(500)
-    forward(500)
+    
 
 def hit_2L():
+    # 前方攻击，左手先
     # 前倾
     up.CDS_SetAngle(LFOOT, 520, 512)
     up.CDS_SetAngle(RFOOT, 520, 512)
@@ -303,29 +387,17 @@ def hit_2L():
     time.sleep(0.05)
     # 伸手
     up.CDS_SetAngle(LHAND, 592, 968)
-    time.sleep(0.6)
+    time.sleep(0.1)
+    # 转臂
+    up.CDS_SetAngle(LSHOULDER, 920, 712)
+    time.sleep(0.3)
     # 复位
-    up.CDS_SetAngle(LELBOW, 76, 512)
-    up.CDS_SetAngle(RELBOW, 76, 512)
-    up.CDS_SetAngle(LHAND, 958, 512)
-    up.CDS_SetAngle(RHAND, 66, 512)
-    up.CDS_SetAngle(LSHOULDER, 838, 712)
-    up.CDS_SetAngle(RSHOULDER, 186, 712)
-    time.sleep(0.4)
-
-    # 右手
-    up.CDS_SetAngle(RSHOULDER, 144, 712)
-    # 伸肘
-    up.CDS_SetAngle(RELBOW, 425, 968)
-    time.sleep(0.05)
-    # 伸手
-    up.CDS_SetAngle(RHAND, 432, 968)
-    time.sleep(0.6)
     alert()
     time.sleep(0.5)
 
     
 def hit_2R():
+    # 前方攻击，右手
     # 前倾
     up.CDS_SetAngle(LFOOT, 520, 512)
     up.CDS_SetAngle(RFOOT, 520, 512)
@@ -337,31 +409,19 @@ def hit_2R():
     time.sleep(0.05)
     # 伸手
     up.CDS_SetAngle(RHAND, 432, 968)
-    time.sleep(0.6)
+    time.sleep(0.1)
+    # 转臂
+    up.CDS_SetAngle(RSHOULDER, 104, 712)
+    time.sleep(0.3)
     # 复位
-    up.CDS_SetAngle(LELBOW, 76, 512)
-    up.CDS_SetAngle(RELBOW, 76, 512)
-    up.CDS_SetAngle(LHAND, 958, 512)
-    up.CDS_SetAngle(RHAND, 66, 512)
-    up.CDS_SetAngle(LSHOULDER, 838, 712)
-    up.CDS_SetAngle(RSHOULDER, 186, 712)
-    time.sleep(0.4)
-
-    # 左手
-    up.CDS_SetAngle(LSHOULDER, 880, 712)
-    # 伸肘
-    up.CDS_SetAngle(LELBOW, 425, 968)
-    time.sleep(0.05)
-    # 伸手
-    up.CDS_SetAngle(LHAND, 592, 968)
-    time.sleep(0.6)
     alert()
     time.sleep(0.5)
 
 def hit_3_L():
+    # 左侧旋转攻击
     # 前倾
-    up.CDS_SetAngle(LFOOT, 530, 512)
-    up.CDS_SetAngle(RFOOT, 530, 512)
+    up.CDS_SetAngle(LFOOT, 540, 512)
+    up.CDS_SetAngle(RFOOT, 540, 512)
     # 伸肘
     up.CDS_SetAngle(LELBOW, 425, 968)
     time.sleep(0.05)
@@ -377,6 +437,7 @@ def hit_3_L():
     alert()
 
 def hit_3_LF():
+    # 左前方攻击
     # 前倾
     up.CDS_SetAngle(LFOOT, 525, 512)
     up.CDS_SetAngle(RFOOT, 525, 512)
@@ -394,11 +455,34 @@ def hit_3_LF():
     time.sleep(0.4)
     alert()
 
-
-def hit_3_R():
+def hit_3_LF_S():
+    # 左前方攻击，向中间扫
     # 前倾
     up.CDS_SetAngle(LFOOT, 530, 512)
     up.CDS_SetAngle(RFOOT, 530, 512)
+    up.CDS_SetAngle(LSHOULDER, 676, 912)
+    time.sleep(0.1)
+    # 伸肘
+    up.CDS_SetAngle(LELBOW, 425, 968)
+    time.sleep(0.05)
+    # 伸手
+    up.CDS_SetAngle(LHAND, 622, 968)
+    time.sleep(0.2)
+    # 摆臂
+    up.CDS_SetAngle(LSHOULDER, 900, 912)
+    time.sleep(0.4)
+    # 复位
+    up.CDS_SetAngle(LELBOW, 76, 512)
+    up.CDS_SetAngle(LHAND, 958, 512)
+    time.sleep(0.4)
+    alert()
+
+
+def hit_3_R():
+    # 右侧旋转攻击
+    # 前倾
+    up.CDS_SetAngle(LFOOT, 540, 512)
+    up.CDS_SetAngle(RFOOT, 540, 512)
     # 伸肘
     up.CDS_SetAngle(RELBOW, 425, 968)
     time.sleep(0.05)
@@ -414,6 +498,7 @@ def hit_3_R():
     alert()
 
 def hit_3_RF():
+    # 右前方攻击
     # 前倾
     up.CDS_SetAngle(LFOOT, 525, 512)
     up.CDS_SetAngle(RFOOT, 525, 512)
@@ -431,25 +516,27 @@ def hit_3_RF():
     time.sleep(0.4)
     alert()
 
-
-def hit_4():
-    up.CDS_SetAngle(LFOOT, 462, 650)
-    up.CDS_SetAngle(RFOOT, 462, 650)
-    up.CDS_SetAngle(LELBOW, 380, 512)
-    up.CDS_SetAngle(LHAND, 330, 512)
-    up.CDS_SetAngle(RELBOW, 340, 512)
-    up.CDS_SetAngle(RHAND, 380, 512)
-
-    time.sleep(0.7)
-    up.CDS_SetAngle(LSHOULDER, 170, 768)
-    up.CDS_SetAngle(RSHOULDER, 885, 768)
-    up.CDS_SetSpeed(RWHEEL, -500)
-    up.CDS_SetSpeed(LWHEEL, -515)
-
-    time.sleep(1.8)
-    up.CDS_SetAngle(LFOOT, 462, 512)
-    up.CDS_SetAngle(RFOOT, 462, 512)
-
+def hit_3_RF_S():
+    # 右前方攻击，向中间扫
+    # 前倾
+    up.CDS_SetAngle(LFOOT, 530, 512)
+    up.CDS_SetAngle(RFOOT, 530, 512)
+    up.CDS_SetAngle(RSHOULDER, 348, 912)
+    time.sleep(0.1)
+    # 伸肘
+    up.CDS_SetAngle(RELBOW, 425, 968)
+    time.sleep(0.05)
+    # 伸手
+    up.CDS_SetAngle(RHAND, 382, 968)
+    time.sleep(0.2)
+    # 摆臂
+    up.CDS_SetAngle(RSHOULDER, 124, 912)
+    time.sleep(0.4)
+    # 复位
+    up.CDS_SetAngle(RELBOW, 76, 512)
+    up.CDS_SetAngle(RHAND, 66, 512)
+    time.sleep(0.4)
+    alert()
 
 def alert():
     up.CDS_SetAngle(LELBOW, 76, 512)
@@ -527,7 +614,7 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
                 time.sleep(0.2)
                 up.CDS_SetSpeed(RWHEEL, 480)
                 up.CDS_SetSpeed(LWHEEL, -500)
-                time.sleep(0.75)
+                time.sleep(0.5)
                 up.CDS_SetSpeed(RWHEEL, 0)
                 up.CDS_SetSpeed(LWHEEL, 0)
                 time.sleep(0.5)
@@ -563,7 +650,7 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
                 time.sleep(0.2)
                 up.CDS_SetSpeed(RWHEEL, -480)
                 up.CDS_SetSpeed(LWHEEL, 500)
-                time.sleep(0.75)
+                time.sleep(0.5)
                 up.CDS_SetSpeed(RWHEEL, 0)
                 up.CDS_SetSpeed(LWHEEL, 0)
                 time.sleep(0.5)
@@ -575,9 +662,10 @@ def autopilot(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag
         if flag_attack.value == 0:
             alert()
 
-        # if adcdata[DISTANCE_BACK] > 200:
-        #     turn_right()
-        #     turn_right()
+        if adcdata[DISTANCE_BACK] > 200:
+            turn_right()
+            turn_right()
+            turn_right()
 
         if iodata[0] == 1:
             auto_pilot_index += 1
@@ -698,16 +786,20 @@ def detect_tag(image, flag_stop_autopilot, flag_video_ok, flag_tracking, flag_tu
         results = atag.detect(gray)
         results_len = len(results)
         if results_len == 0:
+            print("tag not found:",tag_counter)
             tag_counter -= 1
             if tag_counter < 1:
                 flag_stop_autopilot.value = 0
             continue
         # 确认标签ID
-        tag_id = atag.get_id(results)
-        if tag_id != 0:
-            tag_counter = 0
-            if tag_counter < 1:
-                flag_stop_autopilot.value = 0
+        flag_found = False
+        for i in range(results_len):
+            tag_id = results[i].tag_id
+            if tag_id == 0:
+                flag_found = True
+                break
+        if flag_found == False:
+            print("tag not match id:",tag_counter)
             continue
         # 判断距离，获取距离最近的标签的下标
         index = 0
@@ -782,7 +874,7 @@ def push_tag(flag_stop_autopilot):
     forward(1000)
 
 def videocap(image, flag_video_ok):
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture("/dev/video0")
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, video_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, video_height)
     flag_video_ok.value, image.value = cap.read()
@@ -815,6 +907,7 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,trackin
     # time.sleep(2)
     # exit(0)
     global attack_counter
+    global front_hit_counter
     release()
     while not start_event.is_set():
         datas[0] = up_controller.io_data
@@ -830,13 +923,14 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,trackin
     up.CDS_SetSpeed(RWHEEL, -430)
     up.CDS_SetSpeed(LWHEEL, 490)
     print(482)
-    time.sleep(1.8)
+    time.sleep(1.3)
     up.CDS_SetAngle(LFOOT, 542, 512)
     up.CDS_SetAngle(RFOOT, 542, 512)
-    up.CDS_SetSpeed(RWHEEL, -380)
-    up.CDS_SetSpeed(LWHEEL, 530)
+    time.sleep(0.2)
+    up.CDS_SetSpeed(RWHEEL, -320)
+    up.CDS_SetSpeed(LWHEEL, 460)
     print(542)
-    time.sleep(1.3)
+    time.sleep(2)
     forward(2000)
     while True:
         if not stand_event.is_set():
@@ -853,47 +947,8 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,trackin
             if flag_stop_autopilot.value == 1:
                 time.sleep(0.2)
                 continue
-            if (adcdata[DISTANCE_FRONT] > 350 or adcdata[DISTANCE_HEAD] > 350):
-                print("front hit")
-                flag_attack.value = 1
-                attack_counter = 3
-                flag_tracking.value = 1
-                tracking_counter.value = 3
-                if iodata[DISTANCE_RF] == 0:
-                    hit_2R()
-                else:
-                    hit_2L()
-                print(iodata,adcdata)
-                print("front:" + str(adcdata[DISTANCE_FRONT]) + 
-                    " head:" + str(adcdata[DISTANCE_HEAD]) + 
-                    " left:" + str(adcdata[DISTANCE_LEFT]) + 
-                    " right:" + str(adcdata[DISTANCE_RIGHT]) + 
-                    " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
-                    " turning:" + str(flag_turning.value))
-                continue
             if adcdata[DISTANCE_LEFT] > 350:
                 print("left hit")
-                flag_attack.value = 1
-                attack_counter = 3
-                flag_tracking.value = 1
-                tracking_counter.value = 3
-                up.CDS_SetSpeed(RWHEEL, -390)
-                up.CDS_SetSpeed(LWHEEL, -370)
-                hit_3_L()
-                up.CDS_SetSpeed(RWHEEL, 0)
-                up.CDS_SetSpeed(LWHEEL, 0)
-                print(datas[0],datas[1])
-                print("front:" + str(adcdata[DISTANCE_FRONT]) + 
-                    " head:" + str(adcdata[DISTANCE_HEAD]) + 
-                    " left:" + str(adcdata[DISTANCE_LEFT]) + 
-                    " right:" + str(adcdata[DISTANCE_RIGHT]) + 
-                    " attack:" + str(flag_attack.value) + 
-                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
-                    " turning:" + str(flag_turning.value))
-                continue
-            if adcdata[DISTANCE_BACK] > 350:
-                print("back hit")
                 flag_attack.value = 1
                 attack_counter = 3
                 flag_tracking.value = 1
@@ -932,12 +987,16 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,trackin
                     " stop_autopilot:" + str(flag_stop_autopilot.value) +
                     " turning:" + str(flag_turning.value))
             if iodata[DISTANCE_RF] == 0:
-                print("right front hit")
                 flag_attack.value = 1
                 attack_counter = 3
                 flag_tracking.value = 1
                 tracking_counter.value = 3
-                hit_3_RF()
+                if adcdata[DISTANCE_FRONT] > 350 or adcdata[DISTANCE_HEAD] > 350:
+                    hit_3_RF()
+                    print("right front hit")
+                else:
+                    hit_3_RF_S()
+                    print("right front hit with swing")
                 print(datas[0],datas[1])
                 print("front:" + str(adcdata[DISTANCE_FRONT]) + 
                     " head:" + str(adcdata[DISTANCE_HEAD]) + 
@@ -948,13 +1007,58 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,trackin
                     " turning:" + str(flag_turning.value))
                 continue
             if iodata[DISTANCE_LF] == 0:
-                print("left front hit")
                 flag_attack.value = 1
                 attack_counter = 3
                 flag_tracking.value = 1
                 tracking_counter.value = 3
-                hit_3_LF()
+                if adcdata[DISTANCE_FRONT] > 350 or adcdata[DISTANCE_HEAD] > 350:
+                    hit_3_LF()
+                    print("left front hit")
+                else:
+                    hit_3_LF_S()
+                    print("left front hit with swing")
                 print(datas[0],datas[1])
+                print("front:" + str(adcdata[DISTANCE_FRONT]) + 
+                    " head:" + str(adcdata[DISTANCE_HEAD]) + 
+                    " left:" + str(adcdata[DISTANCE_LEFT]) + 
+                    " right:" + str(adcdata[DISTANCE_RIGHT]) + 
+                    " attack:" + str(flag_attack.value) + 
+                    " stop_autopilot:" + str(flag_stop_autopilot.value) +
+                    " turning:" + str(flag_turning.value))
+                continue
+            if (adcdata[DISTANCE_FRONT] > 350 or adcdata[DISTANCE_HEAD] > 350):
+                print("front hit")
+                flag_attack.value = 1
+                attack_counter = 3
+                flag_tracking.value = 1
+                tracking_counter.value = 3
+                if iodata[DISTANCE_RF] == 0:
+                    up.CDS_SetSpeed(RWHEEL, -350)
+                    up.CDS_SetSpeed(LWHEEL, -270)
+                    hit_2R()
+                    up.CDS_SetSpeed(RWHEEL, 0)
+                    up.CDS_SetSpeed(LWHEEL, 0)
+                elif iodata[DISTANCE_RF] == 0:
+                    up.CDS_SetSpeed(RWHEEL, 290)
+                    up.CDS_SetSpeed(LWHEEL, 330)
+                    hit_2L()
+                    up.CDS_SetSpeed(RWHEEL, 0)
+                    up.CDS_SetSpeed(LWHEEL, 0)
+                else:
+                    if front_hit_counter % 2 == 1:
+                        up.CDS_SetSpeed(RWHEEL, -350)
+                        up.CDS_SetSpeed(LWHEEL, -270)
+                        hit_2R()
+                        up.CDS_SetSpeed(RWHEEL, 0)
+                        up.CDS_SetSpeed(LWHEEL, 0)
+                    else:
+                        up.CDS_SetSpeed(RWHEEL, 290)
+                        up.CDS_SetSpeed(LWHEEL, 330)
+                        hit_2L()
+                        up.CDS_SetSpeed(RWHEEL, 0)
+                        up.CDS_SetSpeed(LWHEEL, 0)
+                    front_hit_counter += 1
+                print(iodata,adcdata)
                 print("front:" + str(adcdata[DISTANCE_FRONT]) + 
                     " head:" + str(adcdata[DISTANCE_HEAD]) + 
                     " left:" + str(adcdata[DISTANCE_LEFT]) + 
@@ -972,11 +1076,9 @@ def main(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,trackin
         
 
 if __name__ == '__main__':
-    subprocess.call("v4l2-ctl -d /dev/video0 -c exposure_auto=1 -c exposure_absolute=55", shell=True)
-    signal.signal(signal.SIGINT, signal_handler)
+    atag = Atag()
     stand_event = multiprocessing.Event()
     start_event = multiprocessing.Event()
-    image = multiprocessing.Manager().Value(cv2.CV_8UC3, None)
     flag_stop_autopilot = multiprocessing.Manager().Value('i',0)
     flag_attack = multiprocessing.Manager().Value('i',0)
     flag_video_ok = multiprocessing.Manager().Value('i',0)
@@ -985,29 +1087,47 @@ if __name__ == '__main__':
     hit = multiprocessing.Manager().Value('i',0)
     tracking_counter = multiprocessing.Manager().Value('i',0)
     datas = multiprocessing.Manager().list([[],[]])
-    videocap_proc = multiprocessing.Process(target=videocap, args=(image, flag_video_ok,))
     dataget_proc = multiprocessing.Process(target=dataget, args=(datas,))
-    main_proc = multiprocessing.Process(target=main, args=(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,tracking_counter,))
-    autopilot_proc = multiprocessing.Process(target=autopilot, args=(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag_tracking,flag_turning,image,tracking_counter,))
-    detect_tag_proc = multiprocessing.Process(target=detect_tag, args=(image,flag_stop_autopilot,flag_video_ok,flag_tracking,flag_turning,tracking_counter))
     dataget_proc.start()
     print("dataget start")
-    time.sleep(1)
+    import uptech
+    up = uptech.UpTech()
+    up.ADC_IO_Open()
+    # up.ADC_Led_SetColor(0, 0x07E0)
+    # up.ADC_Led_SetColor(1, 0x07E0)
+    up.CDS_Open()
+    servo_ids = [LFOOT, RFOOT, LSHOULDER, RSHOULDER, LELBOW, LHAND, RELBOW, RHAND]
+    motor_ids = [RWHEEL, LWHEEL]
+    up_controller.set_cds_mode(servo_ids, 0)
+    up_controller.set_cds_mode(motor_ids, 1)
+    main_proc = multiprocessing.Process(target=main, args=(flag_stop_autopilot,datas,flag_attack,stand_event,flag_tracking,tracking_counter,))
     main_proc.start()
     print("main start")
+    import cv2
+    image = multiprocessing.Manager().Value(cv2.CV_8UC3, None)
+    import numpy as np
     while not start_event.is_set():
-        pass
+        print("wait for start")
+    videocap_proc = multiprocessing.Process(target=videocap, args=(image, flag_video_ok,))
     videocap_proc.start()
     print("videocap start")
-    print("wait for video ok")
     while flag_video_ok.value == 0:
-        time.sleep(0.2)
+        pass
     print("video ok")
+
+    detect_tag_proc = multiprocessing.Process(target=detect_tag, args=(image,flag_stop_autopilot,flag_video_ok,flag_tracking,flag_turning,tracking_counter))
     detect_tag_proc.start()
     print("detect_tag start")
-    time.sleep(2.0)
+
+    autopilot_proc = multiprocessing.Process(target=autopilot, args=(flag_stop_autopilot,datas,flag_attack,stand_event,start_event,flag_tracking,flag_turning,image,tracking_counter,))
     autopilot_proc.start()
     print("autopilot start")
+
+    import signal
+    signal.signal(signal.SIGINT, signal_handler)
+
+    subprocess.call("v4l2-ctl -d /dev/video0 -c exposure_auto=1 -c exposure_absolute=50", shell=True)
+    print("exposure set")
     videocap_proc.join()
     main_proc.join()
     autopilot_proc.join()

@@ -1,5 +1,4 @@
-import cv2
-import numpy as np
+
 
 def robot_detect(image):
     # 转换颜色空间
